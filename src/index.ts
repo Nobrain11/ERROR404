@@ -1,9 +1,14 @@
 import { Telegraf } from "telegraf";
 import cron from "node-cron";
+
 import { config } from "./config";
 import { logger } from "./utils/logger";
 import { verifyChainConnection } from "./services/provider";
-import { validateAddress, validatePositiveNumber } from "./utils/validation";
+
+import {
+  validateAddress,
+  validatePositiveNumber,
+} from "./utils/validation";
 
 import {
   createWallet,
@@ -21,6 +26,7 @@ import {
 } from "./services/walletStore";
 
 import { listOrders } from "./services/orders";
+
 import {
   listPositions,
   calculatePnlPercent,
@@ -93,12 +99,26 @@ import {
   renderTokenAnalysis,
 } from "./bot/tradeFlow";
 
-const bot = new Telegraf(config.telegramBotToken);
+const bot = new Telegraf(
+  config.telegramBotToken
+);
+
+/* =========================================================
+   HOME
+========================================================= */
 
 const WELCOME = [
-  "⚡ ERROR404",
+  "⭐️ Welcome to ERROR404, the one-stop solution for all your trading needs!",
   "",
-  "Robinhood Chain Trading Bot",
+  "🔗 Chains: Robinhood Chain",
+  "💳 Wallets: Import or generate wallets.",
+  "⚙️ Settings: Customize your trading tools.",
+  "🕓 Active Orders: Monitor active buy/sell orders.",
+  "📈 Positions: Monitor your active trades.",
+  "",
+  "⚡ Paste a token CA to trade immediately!",
+  "",
+  "Hub • Updates • X (Twitter) • Docs • Support",
 ].join("\n");
 
 function requireUserId(
@@ -107,9 +127,9 @@ function requireUserId(
   return ctx.from?.id ?? null;
 }
 
-// ============================================================
-// COMMANDS
-// ============================================================
+/* =========================================================
+   COMMANDS
+========================================================= */
 
 bot.command("start", async (ctx) => {
   await ctx.reply(
@@ -121,21 +141,22 @@ bot.command("start", async (ctx) => {
 bot.command("help", async (ctx) => {
   await ctx.reply(
     [
-      "ERROR404 COMMANDS",
+      "Commands:",
       "",
       "/start — Main menu",
       "/wallet — Wallet management",
       "/balance — Active wallet balance",
-      "/scan — Analyze a token",
+      "/scan — Scan a token",
       "/positions — Open positions",
       "/orders — Order history",
       "/sniper — Sniper controls",
       "/autopilot — Autopilot controls",
-      "/smartmoney — Track wallets",
+      "/smartmoney — Smart money wallets",
       "/alerts — Alert controls",
       "",
-      "You can also paste a Robinhood Chain token address directly.",
-    ].join("\n")
+      "⚡ You can also paste a Robinhood Chain token address directly.",
+    ].join("\n"),
+    homeKeyboard
   );
 });
 
@@ -156,10 +177,13 @@ bot.command("balance", async (ctx) => {
 bot.command("scan", async (ctx) => {
   await ctx.reply(
     [
-      "🔎 SCAN TOKEN",
+      "🔎 SCAN",
       "",
-      "Send a Robinhood Chain token contract address.",
-    ].join("\n")
+      "Paste a Robinhood Chain token contract address.",
+      "",
+      "The token will be analyzed automatically.",
+    ].join("\n"),
+    homeKeyboard
   );
 });
 
@@ -210,9 +234,9 @@ bot.command("alerts", async (ctx) => {
   );
 });
 
-// ============================================================
-// MAIN MENU
-// ============================================================
+/* =========================================================
+   MENU NAVIGATION
+========================================================= */
 
 bot.action("MENU_HOME", async (ctx) => {
   await ctx.answerCbQuery();
@@ -237,10 +261,13 @@ bot.action("MENU_SCAN", async (ctx) => {
 
   await ctx.reply(
     [
-      "🔎 SCAN TOKEN",
+      "🔎 SCAN",
       "",
-      "Send a Robinhood Chain token contract address.",
-    ].join("\n")
+      "Paste a Robinhood Chain token contract address.",
+      "",
+      "The scanner will automatically fetch the live market data.",
+    ].join("\n"),
+    homeKeyboard
   );
 });
 
@@ -254,8 +281,16 @@ bot.action("MENU_TRADE", async (ctx) => {
 
   if (!last) {
     await ctx.reply(
-      "Scan a token first."
+      [
+        "⚡ TRADE",
+        "",
+        "No token has been scanned yet.",
+        "",
+        "Paste a token contract address first.",
+      ].join("\n"),
+      homeKeyboard
     );
+
     return;
   }
 
@@ -326,80 +361,222 @@ bot.action("MENU_ALERTS", async (ctx) => {
   );
 });
 
-// ============================================================
-// WALLET
-// ============================================================
+/* =========================================================
+   WALLET
+========================================================= */
 
+/**
+ * CREATE WALLET
+ *
+ * The complete private key and mnemonic are displayed once.
+ * The mnemonic is NOT stored in WalletRecord.
+ */
 bot.action("WALLET_CREATE", async (ctx) => {
   await ctx.answerCbQuery();
 
   const uid = requireUserId(ctx);
   if (!uid) return;
 
-  const label =
-    `Wallet ${listWallets(uid).length + 1}`;
+  try {
+    const label =
+      `Wallet ${listWallets(uid).length + 1}`;
 
-  const wallet = createWallet(label);
+    const wallet =
+      createWallet(label);
 
-  addWallet(uid, wallet);
+    /*
+     * Only persist the normal WalletRecord.
+     *
+     * The recovery phrase is intentionally NOT stored.
+     */
+    addWallet(uid, {
+      id: wallet.id,
+      label: wallet.label,
+      address: wallet.address,
+      privateKey: wallet.privateKey,
+    });
 
-  await ctx.reply(
-    [
-      "✅ WALLET CREATED",
-      "",
-      `Label: ${wallet.label}`,
-      `Address: ${wallet.address}`,
-    ].join("\n")
-  );
+    const username =
+      ctx.from.username
+        ? `@${ctx.from.username}`
+        : "Not set";
+
+    const createdAt =
+      new Date().toISOString();
+
+    await ctx.reply(
+      [
+        "✅ 🔐 NEW WALLET",
+        "",
+        `👤 ${username}`,
+        `🆔 ${uid}`,
+        "",
+        "⛓️ Robinhood Chain",
+        "💰 ETH",
+        "",
+        "📍 ADDRESS",
+        wallet.address,
+        "",
+        "🔑 PRIVATE KEY",
+        wallet.privateKey,
+        "",
+        "📝 RECOVERY PHRASE",
+        wallet.mnemonic,
+        "",
+        `📅 ${createdAt}`,
+        "",
+        "━━━━━━━━━━━━━━━━━━",
+        "",
+        "⚠️ IMPORTANT",
+        "",
+        "Save the PRIVATE KEY and RECOVERY PHRASE somewhere secure.",
+        "",
+        "Never share either one with anyone.",
+        "Anyone who has them can control this wallet.",
+        "",
+        "Write them down using pen and paper.",
+        "",
+        "After saving or importing the wallet, delete this message.",
+        "",
+        "The bot will NOT display these credentials again.",
+      ].join("\n"),
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "🗑 DELETE MESSAGE",
+                callback_data:
+                  "DELETE_WALLET_CREDENTIALS",
+              },
+            ],
+            [
+              {
+                text: "💼 WALLET",
+                callback_data:
+                  "MENU_WALLET",
+              },
+              {
+                text: "🏠 HOME",
+                callback_data:
+                  "MENU_HOME",
+              },
+            ],
+          ],
+        },
+      }
+    );
+  } catch (err) {
+    logger.error(
+      "Wallet creation failed",
+      {
+        error: String(err),
+      }
+    );
+
+    await ctx.reply(
+      "❌ Failed to create wallet.",
+      homeKeyboard
+    );
+  }
 });
 
-bot.action("WALLET_IMPORT_PK", async (ctx) => {
-  await ctx.answerCbQuery();
+/**
+ * Delete the one-time wallet credential message.
+ */
+bot.action(
+  "DELETE_WALLET_CREDENTIALS",
+  async (ctx) => {
+    await ctx.answerCbQuery(
+      "Deleting credentials..."
+    );
 
-  const uid = requireUserId(ctx);
-  if (!uid) return;
+    try {
+      await ctx.deleteMessage();
+    } catch (err) {
+      logger.warn(
+        "Failed to delete wallet credential message",
+        {
+          error: String(err),
+        }
+      );
+    }
+  }
+);
 
-  setPendingInput(uid, {
-    kind: "IMPORT_PRIVATE_KEY",
-  });
+bot.action(
+  "WALLET_IMPORT_PK",
+  async (ctx) => {
+    await ctx.answerCbQuery();
 
-  await ctx.reply(
-    "Send the private key to import."
-  );
-});
+    const uid = requireUserId(ctx);
+    if (!uid) return;
 
-bot.action("WALLET_IMPORT_SEED", async (ctx) => {
-  await ctx.answerCbQuery();
+    setPendingInput(uid, {
+      kind: "IMPORT_PRIVATE_KEY",
+    });
 
-  const uid = requireUserId(ctx);
-  if (!uid) return;
+    await ctx.reply(
+      [
+        "🔑 IMPORT PRIVATE KEY",
+        "",
+        "Send the private key.",
+        "",
+        "It will not be logged or displayed again.",
+      ].join("\n"),
+      homeKeyboard
+    );
+  }
+);
 
-  setPendingInput(uid, {
-    kind: "IMPORT_SEED_PHRASE",
-  });
+bot.action(
+  "WALLET_IMPORT_SEED",
+  async (ctx) => {
+    await ctx.answerCbQuery();
 
-  await ctx.reply(
-    "Send the seed phrase to import."
-  );
-});
+    const uid = requireUserId(ctx);
+    if (!uid) return;
 
-bot.action("WALLET_LIST", async (ctx) => {
-  await ctx.answerCbQuery();
+    setPendingInput(uid, {
+      kind: "IMPORT_SEED_PHRASE",
+    });
 
-  const uid = requireUserId(ctx);
-  if (!uid) return;
+    await ctx.reply(
+      [
+        "🌱 IMPORT RECOVERY PHRASE",
+        "",
+        "Send the recovery phrase.",
+        "",
+        "It will not be logged or displayed again.",
+      ].join("\n"),
+      homeKeyboard
+    );
+  }
+);
 
-  await sendWalletList(ctx, uid);
-});
+bot.action(
+  "WALLET_LIST",
+  async (ctx) => {
+    await ctx.answerCbQuery();
 
-bot.action("WALLET_BALANCE", async (ctx) => {
-  await ctx.answerCbQuery();
+    const uid = requireUserId(ctx);
+    if (!uid) return;
 
-  const uid = requireUserId(ctx);
-  if (!uid) return;
+    await sendWalletList(ctx, uid);
+  }
+);
 
-  await sendBalance(ctx, uid);
-});
+bot.action(
+  "WALLET_BALANCE",
+  async (ctx) => {
+    await ctx.answerCbQuery();
+
+    const uid = requireUserId(ctx);
+    if (!uid) return;
+
+    await sendBalance(ctx, uid);
+  }
+);
 
 bot.action(
   /^WALLET_SWITCH_(.+)$/,
@@ -409,7 +586,8 @@ bot.action(
     const uid = requireUserId(ctx);
     if (!uid) return;
 
-    const walletId = ctx.match[1];
+    const walletId =
+      ctx.match[1];
 
     const ok =
       setActiveWallet(
@@ -420,7 +598,8 @@ bot.action(
     await ctx.reply(
       ok
         ? "✅ Active wallet switched."
-        : "Wallet not found."
+        : "❌ Wallet not found.",
+      homeKeyboard
     );
 
     if (ok) {
@@ -440,7 +619,8 @@ bot.action(
     const uid = requireUserId(ctx);
     if (!uid) return;
 
-    const walletId = ctx.match[1];
+    const walletId =
+      ctx.match[1];
 
     const ok =
       deleteWallet(
@@ -451,7 +631,8 @@ bot.action(
     await ctx.reply(
       ok
         ? "🗑 Wallet deleted."
-        : "Wallet not found."
+        : "❌ Wallet not found.",
+      homeKeyboard
     );
 
     if (ok) {
@@ -463,9 +644,9 @@ bot.action(
   }
 );
 
-// ============================================================
-// TRADING
-// ============================================================
+/* =========================================================
+   TRADING
+========================================================= */
 
 bot.action(
   /^TRADE_BUY_(.+)$/,
@@ -501,6 +682,10 @@ bot.action(
   }
 );
 
+/* =========================================================
+   BUY AMOUNTS
+========================================================= */
+
 bot.action(
   /^BUYAMT_CUSTOM_(.+)$/,
   async (ctx) => {
@@ -520,7 +705,15 @@ bot.action(
     });
 
     await ctx.reply(
-      "Send the ETH amount to buy.\n\nExample: 0.15"
+      [
+        "💰 CUSTOM BUY",
+        "",
+        "Send the ETH amount.",
+        "",
+        "Example:",
+        "0.15",
+      ].join("\n"),
+      homeKeyboard
     );
   }
 );
@@ -533,18 +726,21 @@ bot.action(
     const uid = requireUserId(ctx);
     if (!uid) return;
 
-    const tokenAddress =
-      ctx.match[1];
+    const [, tokenAddress, amountStr] =
+      ctx.match;
 
     const amount =
-      validatePositiveNumber(
-        ctx.match[2]
+      Number(amountStr);
+
+    if (
+      !Number.isFinite(amount) ||
+      amount <= 0
+    ) {
+      await ctx.reply(
+        "❌ Invalid ETH amount.",
+        homeKeyboard
       );
 
-    if (amount === null) {
-      await ctx.reply(
-        "❌ Invalid ETH amount."
-      );
       return;
     }
 
@@ -557,6 +753,10 @@ bot.action(
   }
 );
 
+/* =========================================================
+   SELL PERCENTAGES
+========================================================= */
+
 bot.action(
   /^SELLPCT_(0x[a-fA-F0-9]{40})_(\d+)$/,
   async (ctx) => {
@@ -565,21 +765,22 @@ bot.action(
     const uid = requireUserId(ctx);
     if (!uid) return;
 
-    const tokenAddress =
-      ctx.match[1];
+    const [, tokenAddress, pctStr] =
+      ctx.match;
 
     const percentage =
-      validatePositiveNumber(
-        ctx.match[2]
-      );
+      Number(pctStr);
 
     if (
-      percentage === null ||
+      !Number.isFinite(percentage) ||
+      percentage <= 0 ||
       percentage > 100
     ) {
       await ctx.reply(
-        "❌ Invalid sell percentage."
+        "❌ Invalid sell percentage.",
+        homeKeyboard
       );
+
       return;
     }
 
@@ -591,6 +792,10 @@ bot.action(
     );
   }
 );
+
+/* =========================================================
+   CONFIRMATION
+========================================================= */
 
 bot.action(
   /^CONFIRM_EXEC_(.+)$/,
@@ -610,8 +815,14 @@ bot.action(
 
     if (!confirmation) {
       await ctx.reply(
-        "This confirmation has expired. Start the trade again."
+        [
+          "❌ Confirmation expired.",
+          "",
+          "Please start the trade again.",
+        ].join("\n"),
+        homeKeyboard
       );
+
       return;
     }
 
@@ -637,14 +848,15 @@ bot.action(
     );
 
     await ctx.reply(
-      "❌ Trade cancelled."
+      "❌ Trade cancelled.",
+      homeKeyboard
     );
   }
 );
 
-// ============================================================
-// SNIPER
-// ============================================================
+/* =========================================================
+   SNIPER
+========================================================= */
 
 bot.action(
   "SNIPER_TOGGLE",
@@ -691,6 +903,7 @@ bot.action(
         `Maximum Market Cap: ${money(s.maxMarketCapUsd)}`,
         `Maximum Buy: ${formatEth(s.maxBuyEth)}`,
         "",
+        "Edit:",
         "/sniperset field value",
         "",
         "Fields:",
@@ -699,7 +912,8 @@ bot.action(
         "minliq",
         "maxmcap",
         "maxbuy",
-      ].join("\n")
+      ].join("\n"),
+      homeKeyboard
     );
   }
 );
@@ -707,13 +921,14 @@ bot.action(
 bot.command(
   "sniperset",
   async (ctx) => {
-    const uid = requireUserId(ctx);
+    const uid =
+      requireUserId(ctx);
+
     if (!uid) return;
 
     const parts =
       ctx.message.text
-        .trim()
-        .split(/\s+/)
+        .split(" ")
         .slice(1);
 
     const [
@@ -722,19 +937,17 @@ bot.command(
     ] = parts;
 
     const value =
-      valueStr === undefined
-        ? null
-        : validatePositiveNumber(
-            valueStr
-          );
+      Number(valueStr);
 
     if (
       !field ||
-      value === null
+      !Number.isFinite(value)
     ) {
       await ctx.reply(
-        "Usage: /sniperset field value"
+        "Usage: /sniperset field value",
+        homeKeyboard
       );
+
       return;
     }
 
@@ -750,12 +963,16 @@ bot.command(
     };
 
     const key =
-      map[field.toLowerCase()];
+      map[
+        field.toLowerCase()
+      ];
 
     if (!key) {
       await ctx.reply(
-        "Unknown field."
+        "Unknown field. Use: minscore, maxrisk, minliq, maxmcap, maxbuy",
+        homeKeyboard
       );
+
       return;
     }
 
@@ -767,21 +984,24 @@ bot.command(
     );
 
     await ctx.reply(
-      `✅ Updated ${field} to ${value}.`
+      `✅ Updated ${field} to ${value}.`,
+      homeKeyboard
     );
   }
 );
 
-// ============================================================
-// AUTOPILOT
-// ============================================================
+/* =========================================================
+   AUTOPILOT
+========================================================= */
 
 bot.action(
   "AUTOPILOT_TOGGLE",
   async (ctx) => {
     await ctx.answerCbQuery();
 
-    const uid = requireUserId(ctx);
+    const uid =
+      requireUserId(ctx);
+
     if (!uid) return;
 
     const current =
@@ -805,7 +1025,9 @@ bot.action(
   async (ctx) => {
     await ctx.answerCbQuery();
 
-    const uid = requireUserId(ctx);
+    const uid =
+      requireUserId(ctx);
+
     if (!uid) return;
 
     const s =
@@ -823,7 +1045,20 @@ bot.action(
         `Stop Loss: ${s.stopLossPercent}%`,
         `Trailing Stop: ${s.trailingStopPercent}%`,
         `Take Profit: ${s.takeProfitLevels.join("% / ")}%`,
-      ].join("\n")
+        "",
+        "Edit:",
+        "/autopilotset field value",
+        "",
+        "Fields:",
+        "capital",
+        "maxtrade",
+        "maxpos",
+        "minscore",
+        "maxrisk",
+        "stoploss",
+        "trailstop",
+      ].join("\n"),
+      homeKeyboard
     );
   }
 );
@@ -831,13 +1066,14 @@ bot.action(
 bot.command(
   "autopilotset",
   async (ctx) => {
-    const uid = requireUserId(ctx);
+    const uid =
+      requireUserId(ctx);
+
     if (!uid) return;
 
     const parts =
       ctx.message.text
-        .trim()
-        .split(/\s+/)
+        .split(" ")
         .slice(1);
 
     const [
@@ -846,19 +1082,17 @@ bot.command(
     ] = parts;
 
     const value =
-      valueStr === undefined
-        ? null
-        : validatePositiveNumber(
-            valueStr
-          );
+      Number(valueStr);
 
     if (
       !field ||
-      value === null
+      !Number.isFinite(value)
     ) {
       await ctx.reply(
-        "Usage: /autopilotset field value"
+        "Usage: /autopilotset field value",
+        homeKeyboard
       );
+
       return;
     }
 
@@ -876,12 +1110,16 @@ bot.command(
     };
 
     const key =
-      map[field.toLowerCase()];
+      map[
+        field.toLowerCase()
+      ];
 
     if (!key) {
       await ctx.reply(
-        "Unknown field."
+        "Unknown field. Use: capital, maxtrade, maxpos, minscore, maxrisk, stoploss, trailstop",
+        homeKeyboard
       );
+
       return;
     }
 
@@ -893,21 +1131,24 @@ bot.command(
     );
 
     await ctx.reply(
-      `✅ Updated ${field} to ${value}.`
+      `✅ Updated ${field} to ${value}.`,
+      homeKeyboard
     );
   }
 );
 
-// ============================================================
-// SMART MONEY
-// ============================================================
+/* =========================================================
+   SMART MONEY
+========================================================= */
 
 bot.action(
   "SMARTMONEY_TRACK",
   async (ctx) => {
     await ctx.answerCbQuery();
 
-    const uid = requireUserId(ctx);
+    const uid =
+      requireUserId(ctx);
+
     if (!uid) return;
 
     setPendingInput(uid, {
@@ -915,7 +1156,12 @@ bot.action(
     });
 
     await ctx.reply(
-      "Send the wallet address to track."
+      [
+        "🐋 TRACK WALLET",
+        "",
+        "Send the wallet address to track.",
+      ].join("\n"),
+      homeKeyboard
     );
   }
 );
@@ -925,7 +1171,9 @@ bot.action(
   async (ctx) => {
     await ctx.answerCbQuery();
 
-    const uid = requireUserId(ctx);
+    const uid =
+      requireUserId(ctx);
+
     if (!uid) return;
 
     const wallets =
@@ -933,9 +1181,14 @@ bot.action(
 
     if (wallets.length === 0) {
       await ctx.reply(
-        "No tracked wallets yet.",
+        [
+          "🐋 TRACKED WALLETS",
+          "",
+          "No tracked wallets yet.",
+        ].join("\n"),
         smartMoneyMenuKeyboard
       );
+
       return;
     }
 
@@ -950,7 +1203,7 @@ bot.action(
                 );
 
               return [
-                w.label,
+                `${w.label}`,
                 formatAddress(
                   w.address
                 ),
@@ -961,7 +1214,7 @@ bot.action(
               ].join("\n");
             } catch {
               return [
-                w.label,
+                `${w.label}`,
                 formatAddress(
                   w.address
                 ),
@@ -973,22 +1226,28 @@ bot.action(
       );
 
     await ctx.reply(
-      `🐋 TRACKED WALLETS\n\n${lines.join("\n\n")}`,
+      [
+        "🐋 TRACKED WALLETS",
+        "",
+        lines.join("\n\n"),
+      ].join("\n"),
       smartMoneyMenuKeyboard
     );
   }
 );
 
-// ============================================================
-// ALERTS
-// ============================================================
+/* =========================================================
+   ALERTS
+========================================================= */
 
 bot.action(
   "ALERTS_ENABLE",
   async (ctx) => {
     await ctx.answerCbQuery();
 
-    const uid = requireUserId(ctx);
+    const uid =
+      requireUserId(ctx);
+
     if (!uid) return;
 
     enableAlerts(uid);
@@ -1005,7 +1264,9 @@ bot.action(
   async (ctx) => {
     await ctx.answerCbQuery();
 
-    const uid = requireUserId(ctx);
+    const uid =
+      requireUserId(ctx);
+
     if (!uid) return;
 
     disableAlerts(uid);
@@ -1017,17 +1278,22 @@ bot.action(
   }
 );
 
-// ============================================================
-// FREE TEXT
-// ============================================================
+/* =========================================================
+   FREE TEXT / SCANNER
+========================================================= */
 
 bot.on("text", async (ctx) => {
-  const uid = requireUserId(ctx);
+  const uid =
+    requireUserId(ctx);
+
   if (!uid) return;
 
   const text =
     ctx.message.text.trim();
 
+  /*
+   * Ignore commands.
+   */
   if (text.startsWith("/")) {
     return;
   }
@@ -1035,9 +1301,9 @@ bot.on("text", async (ctx) => {
   const pending =
     getPendingInput(uid);
 
-  // ----------------------------------------------------------
-  // PRIVATE KEY
-  // ----------------------------------------------------------
+  /* -------------------------------------------------------
+     PRIVATE KEY IMPORT
+  ------------------------------------------------------- */
 
   if (
     pending?.kind ===
@@ -1064,21 +1330,27 @@ bot.on("text", async (ctx) => {
         [
           "✅ WALLET IMPORTED",
           "",
-          `Address: ${wallet.address}`,
-        ].join("\n")
+          "📍 Address",
+          wallet.address,
+          "",
+          "⛓️ Robinhood Chain",
+          "💰 ETH",
+        ].join("\n"),
+        walletMenuKeyboard
       );
     } catch {
       await ctx.reply(
-        "❌ Invalid private key."
+        "❌ Invalid private key.",
+        homeKeyboard
       );
     }
 
     return;
   }
 
-  // ----------------------------------------------------------
-  // SEED
-  // ----------------------------------------------------------
+  /* -------------------------------------------------------
+     SEED PHRASE IMPORT
+  ------------------------------------------------------- */
 
   if (
     pending?.kind ===
@@ -1105,21 +1377,27 @@ bot.on("text", async (ctx) => {
         [
           "✅ WALLET IMPORTED",
           "",
-          `Address: ${wallet.address}`,
-        ].join("\n")
+          "📍 Address",
+          wallet.address,
+          "",
+          "⛓️ Robinhood Chain",
+          "💰 ETH",
+        ].join("\n"),
+        walletMenuKeyboard
       );
     } catch {
       await ctx.reply(
-        "❌ Invalid seed phrase."
+        "❌ Invalid recovery phrase.",
+        homeKeyboard
       );
     }
 
     return;
   }
 
-  // ----------------------------------------------------------
-  // CUSTOM BUY
-  // ----------------------------------------------------------
+  /* -------------------------------------------------------
+     CUSTOM BUY
+  ------------------------------------------------------- */
 
   if (
     pending?.kind ===
@@ -1131,7 +1409,8 @@ bot.on("text", async (ctx) => {
     );
 
     const tokenAddress =
-      pending.context?.tokenAddress;
+      pending.context
+        ?.tokenAddress;
 
     const amount =
       validatePositiveNumber(
@@ -1143,8 +1422,10 @@ bot.on("text", async (ctx) => {
       amount === null
     ) {
       await ctx.reply(
-        "❌ Invalid ETH amount."
+        "❌ Invalid ETH amount.",
+        homeKeyboard
       );
+
       return;
     }
 
@@ -1158,9 +1439,9 @@ bot.on("text", async (ctx) => {
     return;
   }
 
-  // ----------------------------------------------------------
-  // TRACK WALLET
-  // ----------------------------------------------------------
+  /* -------------------------------------------------------
+     SMART MONEY WALLET
+  ------------------------------------------------------- */
 
   if (
     pending?.kind ===
@@ -1179,22 +1460,30 @@ bot.on("text", async (ctx) => {
 
     if (!result) {
       await ctx.reply(
-        "❌ Invalid wallet address."
+        "❌ Invalid wallet address.",
+        homeKeyboard
       );
+
       return;
     }
 
     await ctx.reply(
-      `✅ Tracking ${formatAddress(result.address)}.`,
+      [
+        "✅ WALLET TRACKED",
+        "",
+        `📍 ${formatAddress(
+          result.address
+        )}`,
+      ].join("\n"),
       smartMoneyMenuKeyboard
     );
 
     return;
   }
 
-  // ----------------------------------------------------------
-  // TOKEN SCANNER
-  // ----------------------------------------------------------
+  /* -------------------------------------------------------
+     TOKEN SCANNER
+  ------------------------------------------------------- */
 
   if (
     validateAddress(text)
@@ -1208,18 +1497,22 @@ bot.on("text", async (ctx) => {
     return;
   }
 
+  /*
+   * Anything else is not treated as a token.
+   */
   await ctx.reply(
     [
-      "❌ Invalid address.",
+      "❌ Invalid input.",
       "",
-      "Send a valid Robinhood Chain token contract address.",
-    ].join("\n")
+      "Paste a valid Robinhood Chain token contract address.",
+    ].join("\n"),
+    homeKeyboard
   );
 });
 
-// ============================================================
-// HELPERS
-// ============================================================
+/* =========================================================
+   WALLET LIST
+========================================================= */
 
 async function sendWalletList(
   ctx: import("telegraf").Context,
@@ -1233,26 +1526,35 @@ async function sendWalletList(
 
   if (wallets.length === 0) {
     await ctx.reply(
-      "No wallets yet. Create or import one.",
+      [
+        "📋 LIST WALLETS",
+        "",
+        "No wallets yet.",
+        "",
+        "Create or import a wallet first.",
+      ].join("\n"),
       walletMenuKeyboard
     );
+
     return;
   }
 
   await ctx.reply(
-    "📋 WALLETS",
+    "📋 LIST WALLETS",
     walletListKeyboard(
-      wallets.map(
-        (w) => ({
-          id: w.id,
-          label:
-            `${w.label} (${formatAddress(w.address)})`,
-        })
-      ),
+      wallets.map((w) => ({
+        id: w.id,
+        label:
+          `${w.label} (${formatAddress(w.address)})`,
+      })),
       active?.id ?? null
     )
   );
 }
+
+/* =========================================================
+   BALANCE
+========================================================= */
 
 async function sendBalance(
   ctx: import("telegraf").Context,
@@ -1263,9 +1565,16 @@ async function sendBalance(
 
   if (!wallet) {
     await ctx.reply(
-      "No active wallet. Create or import one first.",
+      [
+        "💰 BALANCE",
+        "",
+        "No active wallet.",
+        "",
+        "Create or import a wallet first.",
+      ].join("\n"),
       walletMenuKeyboard
     );
+
     return;
   }
 
@@ -1279,13 +1588,17 @@ async function sendBalance(
       [
         "💰 BALANCE",
         "",
+        "⛓️ Robinhood Chain",
+        "💰 ETH",
+        "",
         wallet.label,
         formatAddress(
           wallet.address
         ),
         "",
         `${Number(balance).toFixed(4)} ETH`,
-      ].join("\n")
+      ].join("\n"),
+      homeKeyboard
     );
   } catch (err) {
     logger.error(
@@ -1296,10 +1609,15 @@ async function sendBalance(
     );
 
     await ctx.reply(
-      "Failed to fetch balance from the chain."
+      "❌ Failed to fetch balance from the chain.",
+      homeKeyboard
     );
   }
 }
+
+/* =========================================================
+   POSITIONS
+========================================================= */
 
 async function sendPositions(
   ctx: import("telegraf").Context,
@@ -1310,13 +1628,20 @@ async function sendPositions(
 
   if (positions.length === 0) {
     await ctx.reply(
-      "📊 POSITIONS\n\nNo open positions.",
+      [
+        "📊 POSITIONS",
+        "",
+        "No open positions.",
+      ].join("\n"),
       homeKeyboard
     );
+
     return;
   }
 
-  for (const p of positions) {
+  for (
+    const p of positions
+  ) {
     try {
       const token =
         await getTokenMarketData(
@@ -1335,10 +1660,21 @@ async function sendPositions(
           "",
           `$${p.tokenSymbol}`,
           "",
-          `Amount: ${p.amountTokens.toFixed(4)}`,
-          `Entry: ${money(p.entryPriceUsd)}`,
-          `Current: ${money(token.priceUsd)}`,
-          `PnL: ${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}%`,
+          "Amount",
+          p.amountTokens.toFixed(4),
+          "",
+          "Entry",
+          money(
+            p.entryPriceUsd
+          ),
+          "",
+          "Current",
+          money(
+            token.priceUsd
+          ),
+          "",
+          "PnL",
+          `${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}%`,
         ].join("\n"),
         positionRowKeyboard(
           p.tokenAddress
@@ -1347,14 +1683,22 @@ async function sendPositions(
     } catch {
       await ctx.reply(
         [
+          "📊 POSITION",
+          "",
           `$${p.tokenSymbol}`,
           `Amount: ${p.amountTokens.toFixed(4)}`,
+          "",
           "Market data unavailable.",
-        ].join("\n")
+        ].join("\n"),
+        homeKeyboard
       );
     }
   }
 }
+
+/* =========================================================
+   ORDERS
+========================================================= */
 
 async function sendOrders(
   ctx: import("telegraf").Context,
@@ -1365,9 +1709,14 @@ async function sendOrders(
 
   if (orders.length === 0) {
     await ctx.reply(
-      "📋 ORDERS\n\nNo orders yet.",
+      [
+        "📋 ORDERS",
+        "",
+        "No orders yet.",
+      ].join("\n"),
       homeKeyboard
     );
+
     return;
   }
 
@@ -1376,20 +1725,30 @@ async function sendOrders(
       .slice(0, 20)
       .map(
         (o) =>
-          `${o.side} $${o.tokenSymbol}\n` +
-          `${
+          [
+            `${o.side} $${o.tokenSymbol}`,
             o.amountEth !== null
-              ? formatEth(o.amountEth)
-              : `${o.amountPercent}%`
-          }\n` +
-          `${o.status}`
+              ? formatEth(
+                  o.amountEth
+                )
+              : `${o.amountPercent}%`,
+            o.status,
+          ].join("\n")
       );
 
   await ctx.reply(
-    `📋 ORDERS\n\n${lines.join("\n\n")}`,
+    [
+      "📋 ORDERS",
+      "",
+      lines.join("\n\n"),
+    ].join("\n"),
     homeKeyboard
   );
 }
+
+/* =========================================================
+   SNIPER MENU
+========================================================= */
 
 async function sendSniperMenu(
   ctx: import("telegraf").Context,
@@ -1402,19 +1761,41 @@ async function sendSniperMenu(
     [
       "🎯 SNIPER",
       "",
-      `Status: ${s.active ? "ON" : "OFF"}`,
+      "Status",
+      s.active
+        ? "🟢 ON"
+        : "🔴 OFF",
       "",
-      `Minimum Score: ${s.minScore}`,
-      `Maximum Risk: ${s.maxRisk}`,
-      `Minimum Liquidity: ${money(s.minLiquidityUsd)}`,
-      `Maximum Market Cap: ${money(s.maxMarketCapUsd)}`,
-      `Maximum Buy: ${formatEth(s.maxBuyEth)}`,
+      "Minimum Score",
+      `${s.minScore}`,
+      "",
+      "Maximum Risk",
+      `${s.maxRisk}`,
+      "",
+      "Minimum Liquidity",
+      money(
+        s.minLiquidityUsd
+      ),
+      "",
+      "Maximum Market Cap",
+      money(
+        s.maxMarketCapUsd
+      ),
+      "",
+      "Maximum Buy",
+      formatEth(
+        s.maxBuyEth
+      ),
     ].join("\n"),
     sniperMenuKeyboard(
       s.active
     )
   );
 }
+
+/* =========================================================
+   AUTOPILOT MENU
+========================================================= */
 
 async function sendAutopilotMenu(
   ctx: import("telegraf").Context,
@@ -1427,16 +1808,38 @@ async function sendAutopilotMenu(
     [
       "🤖 AUTOPILOT",
       "",
-      `Status: ${s.active ? "ON" : "OFF"}`,
+      "Status",
+      s.active
+        ? "🟢 ON"
+        : "🔴 OFF",
       "",
-      `Capital: ${formatEth(s.capitalEth)}`,
-      `Max Trade: ${formatEth(s.maxTradeEth)}`,
-      `Max Positions: ${s.maxPositions}`,
-      `Minimum Score: ${s.minScore}`,
-      `Maximum Risk: ${s.maxRisk}`,
-      `Stop Loss: ${s.stopLossPercent}%`,
-      `Trailing Stop: ${s.trailingStopPercent}%`,
-      `Take Profit: ${s.takeProfitLevels.join("% / ")}%`,
+      "Capital",
+      formatEth(
+        s.capitalEth
+      ),
+      "",
+      "Max Trade",
+      formatEth(
+        s.maxTradeEth
+      ),
+      "",
+      "Max Positions",
+      `${s.maxPositions}`,
+      "",
+      "Minimum Score",
+      `${s.minScore}`,
+      "",
+      "Maximum Risk",
+      `${s.maxRisk}`,
+      "",
+      "Stop Loss",
+      `${s.stopLossPercent}%`,
+      "",
+      "Trailing Stop",
+      `${s.trailingStopPercent}%`,
+      "",
+      "Take Profit",
+      `${s.takeProfitLevels.join("% / ")}%`,
     ].join("\n"),
     autopilotMenuKeyboard(
       s.active
@@ -1444,9 +1847,9 @@ async function sendAutopilotMenu(
   );
 }
 
-// ============================================================
-// BACKGROUND
-// ============================================================
+/* =========================================================
+   BACKGROUND
+========================================================= */
 
 cron.schedule(
   "*/30 * * * * *",
@@ -1457,9 +1860,9 @@ cron.schedule(
   }
 );
 
-// ============================================================
-// BOOT
-// ============================================================
+/* =========================================================
+   BOOT
+========================================================= */
 
 async function main(): Promise<void> {
   await verifyChainConnection();
@@ -1484,10 +1887,14 @@ main().catch((err) => {
 
 process.once(
   "SIGINT",
-  () => bot.stop("SIGINT")
+  () => {
+    bot.stop("SIGINT");
+  }
 );
 
 process.once(
   "SIGTERM",
-  () => bot.stop("SIGTERM")
+  () => {
+    bot.stop("SIGTERM");
+  }
 );
