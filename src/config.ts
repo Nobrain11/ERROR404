@@ -1,7 +1,7 @@
 export const config = {
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN!,
 
-  // Telegram user/chat ID that receives admin notifications.
+  // Telegram admin chat/user ID
   adminChatId: Number(process.env.ADMIN_CHAT_ID),
 
   // Blockchain
@@ -15,11 +15,16 @@ export const config = {
   // Market data
   dexApiUrl: process.env.DEX_API_URL!,
 
-  // Confirmation timeout
+  // Trade confirmation
   confirmationTtlMs: Number(
     process.env.CONFIRMATION_TTL_MS ?? 120_000
   ),
 
   // Logging
   logLevel: process.env.LOG_LEVEL ?? "info",
+
+  // Debug logging
+  debug:
+    process.env.DEBUG === "true" ||
+    process.env.NODE_ENV !== "production",
 };
