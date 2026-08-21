@@ -1,11 +1,15 @@
 import { Markup } from "telegraf";
-
+/* =========================================================
+   MAIN MENU
+========================================================= */
 export const mainMenuKeyboard = Markup.inlineKeyboard([
   [
     Markup.button.callback("💼 WALLET", "MENU_WALLET"),
     Markup.button.callback("🔎 SCAN", "MENU_SCAN"),
   ],
-  [Markup.button.callback("⚡ TRADE", "MENU_TRADE")],
+  [
+    Markup.button.callback("⚡ TRADE", "MENU_TRADE"),
+  ],
   [
     Markup.button.callback("📊 POSITIONS", "MENU_POSITIONS"),
     Markup.button.callback("📋 ORDERS", "MENU_ORDERS"),
@@ -19,44 +23,89 @@ export const mainMenuKeyboard = Markup.inlineKeyboard([
     Markup.button.callback("🔔 ALERTS", "MENU_ALERTS"),
   ],
 ]);
-
+/* =========================================================
+   HOME
+========================================================= */
 export const homeKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback("🏠 HOME", "MENU_HOME")],
+  [
+    Markup.button.callback("🏠 HOME", "MENU_HOME"),
+  ],
 ]);
-
+/* =========================================================
+   WALLET MENU
+========================================================= */
 export const walletMenuKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback("➕ CREATE WALLET", "WALLET_CREATE")],
-  [Markup.button.callback("🔑 IMPORT PRIVATE KEY", "WALLET_IMPORT_PK")],
-  [Markup.button.callback("🌱 IMPORT SEED PHRASE", "WALLET_IMPORT_SEED")],
-  [Markup.button.callback("📋 LIST WALLETS", "WALLET_LIST")],
-  [Markup.button.callback("💰 BALANCE", "WALLET_BALANCE")],
-  [Markup.button.callback("🏠 HOME", "MENU_HOME")],
+  [
+    Markup.button.callback(
+      "➕ CREATE WALLET",
+      "WALLET_CREATE"
+    ),
+    Markup.button.callback(
+      "🔑 IMPORT PRIVATE KEY",
+      "WALLET_IMPORT_PK"
+    ),
+  ],
+  [
+    Markup.button.callback(
+      "🌱 IMPORT SEED PHRASE",
+      "WALLET_IMPORT_SEED"
+    ),
+    Markup.button.callback(
+      "📋 LIST WALLETS",
+      "WALLET_LIST"
+    ),
+  ],
+  [
+    Markup.button.callback(
+      "📤 EXPORT WALLET",
+      "WALLET_EXPORT"
+    ),
+    Markup.button.callback(
+      "💰 BALANCE",
+      "WALLET_BALANCE"
+    ),
+  ],
+  [
+    Markup.button.callback(
+      "↩️ RETURN",
+      "MENU_HOME"
+    ),
+  ],
 ]);
-
+/* =========================================================
+   WALLET LIST
+========================================================= */
 export function walletListKeyboard(
-  wallets: { id: string; label: string }[],
+  wallets: {
+    id: string;
+    label: string;
+  }[],
   activeId: string | null
 ) {
-  const rows = wallets.map((w) => [
+  const rows = wallets.map((wallet) => [
     Markup.button.callback(
-      `${w.id === activeId ? "✅ " : ""}${w.label}`,
-      `WALLET_SWITCH_${w.id}`
+      `${wallet.id === activeId ? "✅ " : ""}${wallet.label}`,
+      `WALLET_SWITCH_${wallet.id}`
     ),
-    Markup.button.callback("🗑", `WALLET_DELETE_${w.id}`),
+    Markup.button.callback(
+      "🗑",
+      `WALLET_DELETE_${wallet.id}`
+    ),
   ]);
-
   rows.push([
-    Markup.button.callback("🏠 HOME", "MENU_HOME"),
+    Markup.button.callback(
+      "↩️ RETURN",
+      "MENU_WALLET"
+    ),
   ]);
-
   return Markup.inlineKeyboard(rows);
 }
-
 /* =========================================================
-   TOKEN / SCANNER
+   TOKEN ANALYSIS
 ========================================================= */
-
-export function tokenAnalysisKeyboard(tokenAddress: string) {
+export function tokenAnalysisKeyboard(
+  tokenAddress: string
+) {
   return Markup.inlineKeyboard([
     [
       Markup.button.callback(
@@ -86,14 +135,13 @@ export function tokenAnalysisKeyboard(tokenAddress: string) {
     ],
   ]);
 }
-
 /* =========================================================
-   PRE-BUY / BUY CONTROLS
+   BUY AMOUNT
 ========================================================= */
-
-export function buyAmountKeyboard(tokenAddress: string) {
+export function buyAmountKeyboard(
+  tokenAddress: string
+) {
   return Markup.inlineKeyboard([
-    // Preset ETH amounts
     [
       Markup.button.callback(
         "0.01 ETH",
@@ -104,83 +152,23 @@ export function buyAmountKeyboard(tokenAddress: string) {
         `BUYAMT_${tokenAddress}_0.05`
       ),
     ],
-
     [
       Markup.button.callback(
-        "0.1 ETH",
+        "0.10 ETH",
         `BUYAMT_${tokenAddress}_0.1`
       ),
       Markup.button.callback(
-        "0.2 ETH",
-        `BUYAMT_${tokenAddress}_0.2`
+        "0.25 ETH",
+        `BUYAMT_${tokenAddress}_0.25`
       ),
     ],
-
     [
       Markup.button.callback(
-        "0.5 ETH",
-        `BUYAMT_${tokenAddress}_0.5`
-      ),
-      Markup.button.callback(
-        "1 ETH",
-        `BUYAMT_${tokenAddress}_1`
-      ),
-    ],
-
-    // Custom / max
-    [
-      Markup.button.callback(
-        "💰 BUY X ETH",
+        "CUSTOM",
         `BUYAMT_CUSTOM_${tokenAddress}`
       ),
-      Markup.button.callback(
-        "🦍 APE MAX",
-        `BUYMAX_${tokenAddress}`
-      ),
     ],
-
-    // Buy exact token amount
     [
-      Markup.button.callback(
-        "🪙 BUY X TOKENS",
-        `BUYTOKENS_${tokenAddress}`
-      ),
-    ],
-
-    // Trade settings
-    [
-      Markup.button.callback(
-        "⚙️ SLIPPAGE 10%",
-        `BUYSLIPPAGE_${tokenAddress}`
-      ),
-      Markup.button.callback(
-        "⛽ GAS 0.1 GWEI",
-        `BUYGAS_${tokenAddress}`
-      ),
-    ],
-
-    // Limit order
-    [
-      Markup.button.callback(
-        "🎯 BUY LIMIT",
-        `BUYLIMIT_${tokenAddress}`
-      ),
-    ],
-
-    // Refresh token data
-    [
-      Markup.button.callback(
-        "🔄 REFRESH",
-        `BUYREFRESH_${tokenAddress}`
-      ),
-    ],
-
-    // Navigation
-    [
-      Markup.button.callback(
-        "↩️ BACK",
-        `TOKEN_BACK_${tokenAddress}`
-      ),
       Markup.button.callback(
         "🏠 HOME",
         "MENU_HOME"
@@ -188,12 +176,12 @@ export function buyAmountKeyboard(tokenAddress: string) {
     ],
   ]);
 }
-
 /* =========================================================
-   SELL
+   SELL PERCENTAGE
 ========================================================= */
-
-export function sellPercentKeyboard(tokenAddress: string) {
+export function sellPercentKeyboard(
+  tokenAddress: string
+) {
   return Markup.inlineKeyboard([
     [
       Markup.button.callback(
@@ -217,21 +205,15 @@ export function sellPercentKeyboard(tokenAddress: string) {
     ],
     [
       Markup.button.callback(
-        "↩️ BACK",
-        `TOKEN_BACK_${tokenAddress}`
-      ),
-      Markup.button.callback(
         "🏠 HOME",
         "MENU_HOME"
       ),
     ],
   ]);
 }
-
 /* =========================================================
    CONFIRMATION
 ========================================================= */
-
 export function confirmationKeyboard(
   confirmationId: string
 ) {
@@ -248,11 +230,9 @@ export function confirmationKeyboard(
     ],
   ]);
 }
-
 /* =========================================================
    SNIPER
 ========================================================= */
-
 export const sniperMenuKeyboard = (
   active: boolean
 ) =>
@@ -276,11 +256,9 @@ export const sniperMenuKeyboard = (
       ),
     ],
   ]);
-
 /* =========================================================
    AUTOPILOT
 ========================================================= */
-
 export const autopilotMenuKeyboard = (
   active: boolean
 ) =>
@@ -304,11 +282,9 @@ export const autopilotMenuKeyboard = (
       ),
     ],
   ]);
-
 /* =========================================================
    SMART MONEY
 ========================================================= */
-
 export const smartMoneyMenuKeyboard =
   Markup.inlineKeyboard([
     [
@@ -330,11 +306,9 @@ export const smartMoneyMenuKeyboard =
       ),
     ],
   ]);
-
 /* =========================================================
    ALERTS
 ========================================================= */
-
 export const alertsMenuKeyboard = (
   enabled: boolean
 ) =>
@@ -362,11 +336,9 @@ export const alertsMenuKeyboard = (
       ),
     ],
   ]);
-
 /* =========================================================
-   POSITIONS
+   POSITION
 ========================================================= */
-
 export function positionRowKeyboard(
   tokenAddress: string
 ) {
@@ -378,10 +350,6 @@ export function positionRowKeyboard(
       ),
     ],
     [
-      Markup.button.callback(
-        "↩️ BACK",
-        `TOKEN_BACK_${tokenAddress}`
-      ),
       Markup.button.callback(
         "🏠 HOME",
         "MENU_HOME"
