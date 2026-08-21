@@ -1,30 +1,25 @@
-import "dotenv/config";
-
 export const config = {
-  telegramBotToken:
-    process.env.TELEGRAM_BOT_TOKEN ?? "",
+  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN!,
 
-  adminChatId:
-    Number(process.env.ADMIN_CHAT_ID ?? 0),
+  // Telegram user/chat ID that receives admin notifications.
+  adminChatId: Number(process.env.ADMIN_CHAT_ID),
 
-  rpcUrl:
-    process.env.RPC_URL ?? "",
+  // Blockchain
+  rpcUrl: process.env.RPC_URL!,
+  chainId: Number(process.env.CHAIN_ID),
 
-  chainId:
-    Number(process.env.CHAIN_ID ?? 0),
+  // Trading
+  routerAddress: process.env.ROUTER_ADDRESS!,
+  wethAddress: process.env.WETH_ADDRESS!,
 
-  logLevel:
-    process.env.LOG_LEVEL ?? "info",
+  // Market data
+  dexApiUrl: process.env.DEX_API_URL!,
+
+  // Confirmation timeout
+  confirmationTtlMs: Number(
+    process.env.CONFIRMATION_TTL_MS ?? 120_000
+  ),
+
+  // Logging
+  logLevel: process.env.LOG_LEVEL ?? "info",
 };
-
-if (!config.telegramBotToken) {
-  throw new Error(
-    "TELEGRAM_BOT_TOKEN is not configured."
-  );
-}
-
-if (!config.adminChatId) {
-  console.warn(
-    "⚠️ ADMIN_CHAT_ID is not configured. Admin notifications are disabled."
-  );
-}
