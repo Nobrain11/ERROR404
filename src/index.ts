@@ -3,13 +3,18 @@ import cron from "node-cron";
 import { config } from "./config";
 import { logger } from "./utils/logger";
 import { verifyChainConnection } from "./services/provider";
-import { validateAddress, validatePositiveNumber } from "./utils/validation";
+import {
+  validateAddress,
+  validatePositiveNumber,
+} from "./utils/validation";
+
 import {
   createWallet,
   importFromPrivateKey,
   importFromSeedPhrase,
   getBalanceEth,
 } from "./services/wallet";
+
 import {
   addWallet,
   listWallets,
@@ -17,45 +22,59 @@ import {
   setActiveWallet,
   deleteWallet,
 } from "./services/walletStore";
+
 import { listOrders } from "./services/orders";
-import { listPositions, calculatePnlPercent } from "./services/positions";
+
+import {
+  listPositions,
+  calculatePnlPercent,
+} from "./services/positions";
+
 import {
   getSniperSettings,
   startSniper,
   stopSniper,
   updateSniperSettings,
 } from "./services/sniper";
+
 import {
   getAutopilotSettings,
   startAutopilot,
   stopAutopilot,
   updateAutopilotSettings,
 } from "./services/autopilot";
+
 import {
   trackWallet,
   listTrackedWallets,
   getWalletActivity,
 } from "./services/smartMoney";
+
 import {
   alertsEnabled,
   enableAlerts,
   disableAlerts,
 } from "./services/alerts";
+
 import { getTokenMarketData } from "./services/market";
+
 import {
   consumeConfirmation,
   cancelConfirmation,
 } from "./services/confirmation";
+
 import {
   getPendingInput,
   setPendingInput,
   getLastScan,
 } from "./services/session";
+
 import {
   formatAddress,
   formatEth,
   money,
 } from "./utils/format";
+
 import {
   mainMenuKeyboard,
   homeKeyboard,
@@ -69,6 +88,7 @@ import {
   alertsMenuKeyboard,
   positionRowKeyboard,
 } from "./bot/keyboards";
+
 import {
   analyzeAndReply,
   startBuyFlow,
@@ -91,38 +111,48 @@ function requireUserId(
   return ctx.from?.id ?? null;
 }
 
-// ---------- Commands ----------
+// ============================================================
+// COMMANDS
+// ============================================================
 
 bot.command("start", async (ctx) => {
-  await ctx.reply(WELCOME, mainMenuKeyboard);
+  await ctx.reply(
+    WELCOME,
+    mainMenuKeyboard
+  );
 });
 
 bot.command("help", async (ctx) => {
   await ctx.reply(
     [
-      "Commands:",
-      "/start — main menu",
-      "/wallet — wallet management",
-      "/balance — active wallet balance",
-      "/scan — send a token address to analyze",
-      "/positions — open positions",
-      "/orders — order history",
-      "/sniper — sniper controls",
-      "/autopilot — autopilot controls",
-      "/smartmoney — track wallets",
-      "/alerts — alert controls",
+      "ERROR404 — Commands",
       "",
-      "You can also just paste a Robinhood Chain token address to analyze it.",
+      "/start — Main menu",
+      "/wallet — Wallet management",
+      "/balance — Active wallet balance",
+      "/scan — Analyze a token",
+      "/positions — Open positions",
+      "/orders — Order history",
+      "/sniper — Sniper controls",
+      "/autopilot — Autopilot controls",
+      "/smartmoney — Track wallets",
+      "/alerts — Alert controls",
+      "",
+      "You can also paste a Robinhood Chain token address directly.",
     ].join("\n")
   );
 });
 
 bot.command("wallet", async (ctx) => {
-  await ctx.reply("💼 WALLET", walletMenuKeyboard);
+  await ctx.reply(
+    "💼 WALLET",
+    walletMenuKeyboard
+  );
 });
 
 bot.command("balance", async (ctx) => {
   const uid = requireUserId(ctx);
+
   if (!uid) return;
 
   await sendBalance(ctx, uid);
@@ -130,12 +160,13 @@ bot.command("balance", async (ctx) => {
 
 bot.command("scan", async (ctx) => {
   await ctx.reply(
-    "Send a Robinhood Chain token contract address to analyze."
+    "🔎 Send a Robinhood Chain token contract address to analyze."
   );
 });
 
 bot.command("positions", async (ctx) => {
   const uid = requireUserId(ctx);
+
   if (!uid) return;
 
   await sendPositions(ctx, uid);
@@ -143,6 +174,7 @@ bot.command("positions", async (ctx) => {
 
 bot.command("orders", async (ctx) => {
   const uid = requireUserId(ctx);
+
   if (!uid) return;
 
   await sendOrders(ctx, uid);
@@ -150,6 +182,7 @@ bot.command("orders", async (ctx) => {
 
 bot.command("sniper", async (ctx) => {
   const uid = requireUserId(ctx);
+
   if (!uid) return;
 
   await sendSniperMenu(ctx, uid);
@@ -157,6 +190,7 @@ bot.command("sniper", async (ctx) => {
 
 bot.command("autopilot", async (ctx) => {
   const uid = requireUserId(ctx);
+
   if (!uid) return;
 
   await sendAutopilotMenu(ctx, uid);
@@ -171,30 +205,44 @@ bot.command("smartmoney", async (ctx) => {
 
 bot.command("alerts", async (ctx) => {
   const uid = requireUserId(ctx);
+
   if (!uid) return;
 
   await ctx.reply(
     "🔔 ALERTS",
-    alertsMenuKeyboard(alertsEnabled(uid))
+    alertsMenuKeyboard(
+      alertsEnabled(uid)
+    )
   );
 });
 
-// ---------- Menu navigation ----------
+// ============================================================
+// MAIN MENU
+// ============================================================
 
 bot.action("MENU_HOME", async (ctx) => {
   await ctx.answerCbQuery();
-  await ctx.reply(WELCOME, mainMenuKeyboard);
+
+  await ctx.reply(
+    WELCOME,
+    mainMenuKeyboard
+  );
 });
 
 bot.action("MENU_WALLET", async (ctx) => {
   await ctx.answerCbQuery();
-  await ctx.reply("💼 WALLET", walletMenuKeyboard);
+
+  await ctx.reply(
+    "💼 WALLET",
+    walletMenuKeyboard
+  );
 });
 
 bot.action("MENU_SCAN", async (ctx) => {
   await ctx.answerCbQuery();
+
   await ctx.reply(
-    "Send a Robinhood Chain token contract address to analyze."
+    "🔎 Send a Robinhood Chain token contract address to analyze."
   );
 });
 
@@ -202,20 +250,24 @@ bot.action("MENU_TRADE", async (ctx) => {
   await ctx.answerCbQuery();
 
   const uid = requireUserId(ctx);
+
   if (!uid) return;
 
   const last = getLastScan(uid);
 
   if (!last) {
     await ctx.reply(
-      "Send a token address first (🔎 SCAN) to trade it."
+      "Send a token address first using 🔎 SCAN."
     );
+
     return;
   }
 
   await ctx.reply(
     renderTokenAnalysis(last),
-    buyAmountKeyboard(last.token.address)
+    buyAmountKeyboard(
+      last.token.address
+    )
   );
 });
 
@@ -223,6 +275,7 @@ bot.action("MENU_POSITIONS", async (ctx) => {
   await ctx.answerCbQuery();
 
   const uid = requireUserId(ctx);
+
   if (!uid) return;
 
   await sendPositions(ctx, uid);
@@ -232,6 +285,7 @@ bot.action("MENU_ORDERS", async (ctx) => {
   await ctx.answerCbQuery();
 
   const uid = requireUserId(ctx);
+
   if (!uid) return;
 
   await sendOrders(ctx, uid);
@@ -241,6 +295,7 @@ bot.action("MENU_SNIPER", async (ctx) => {
   await ctx.answerCbQuery();
 
   const uid = requireUserId(ctx);
+
   if (!uid) return;
 
   await sendSniperMenu(ctx, uid);
@@ -250,6 +305,7 @@ bot.action("MENU_AUTOPILOT", async (ctx) => {
   await ctx.answerCbQuery();
 
   const uid = requireUserId(ctx);
+
   if (!uid) return;
 
   await sendAutopilotMenu(ctx, uid);
@@ -257,6 +313,7 @@ bot.action("MENU_AUTOPILOT", async (ctx) => {
 
 bot.action("MENU_SMARTMONEY", async (ctx) => {
   await ctx.answerCbQuery();
+
   await ctx.reply(
     "🐋 SMART MONEY",
     smartMoneyMenuKeyboard
@@ -267,30 +324,42 @@ bot.action("MENU_ALERTS", async (ctx) => {
   await ctx.answerCbQuery();
 
   const uid = requireUserId(ctx);
+
   if (!uid) return;
 
   await ctx.reply(
     "🔔 ALERTS",
-    alertsMenuKeyboard(alertsEnabled(uid))
+    alertsMenuKeyboard(
+      alertsEnabled(uid)
+    )
   );
 });
 
-// ---------- Wallet actions ----------
+// ============================================================
+// WALLET
+// ============================================================
 
 bot.action("WALLET_CREATE", async (ctx) => {
   await ctx.answerCbQuery();
 
   const uid = requireUserId(ctx);
+
   if (!uid) return;
 
-  const label = `Wallet ${listWallets(uid).length + 1}`;
+  const label =
+    `Wallet ${listWallets(uid).length + 1}`;
 
   const wallet = createWallet(label);
 
   addWallet(uid, wallet);
 
   await ctx.reply(
-    `✅ Wallet created.\n\nLabel: ${wallet.label}\nAddress: ${wallet.address}`
+    [
+      "✅ Wallet created.",
+      "",
+      `Label: ${wallet.label}`,
+      `Address: ${wallet.address}`,
+    ].join("\n")
   );
 });
 
@@ -298,6 +367,7 @@ bot.action("WALLET_IMPORT_PK", async (ctx) => {
   await ctx.answerCbQuery();
 
   const uid = requireUserId(ctx);
+
   if (!uid) return;
 
   setPendingInput(uid, {
@@ -305,7 +375,7 @@ bot.action("WALLET_IMPORT_PK", async (ctx) => {
   });
 
   await ctx.reply(
-    "Send the private key to import. This message will not be logged or displayed again."
+    "Send the private key to import."
   );
 });
 
@@ -313,6 +383,7 @@ bot.action("WALLET_IMPORT_SEED", async (ctx) => {
   await ctx.answerCbQuery();
 
   const uid = requireUserId(ctx);
+
   if (!uid) return;
 
   setPendingInput(uid, {
@@ -320,7 +391,7 @@ bot.action("WALLET_IMPORT_SEED", async (ctx) => {
   });
 
   await ctx.reply(
-    "Send the seed phrase to import. This message will not be logged or displayed again."
+    "Send the seed phrase to import."
   );
 });
 
@@ -328,6 +399,7 @@ bot.action("WALLET_LIST", async (ctx) => {
   await ctx.answerCbQuery();
 
   const uid = requireUserId(ctx);
+
   if (!uid) return;
 
   await sendWalletList(ctx, uid);
@@ -337,467 +409,695 @@ bot.action("WALLET_BALANCE", async (ctx) => {
   await ctx.answerCbQuery();
 
   const uid = requireUserId(ctx);
+
   if (!uid) return;
 
   await sendBalance(ctx, uid);
 });
 
-bot.action(/^WALLET_SWITCH_(.+)$/, async (ctx) => {
-  await ctx.answerCbQuery();
+bot.action(
+  /^WALLET_SWITCH_(.+)$/,
+  async (ctx) => {
+    await ctx.answerCbQuery();
 
-  const uid = requireUserId(ctx);
-  if (!uid) return;
+    const uid = requireUserId(ctx);
 
-  const walletId = ctx.match[1];
+    if (!uid) return;
 
-  const ok = setActiveWallet(uid, walletId);
+    const walletId = ctx.match[1];
 
-  await ctx.reply(
-    ok
-      ? "✅ Active wallet switched."
-      : "Wallet not found."
-  );
+    const ok = setActiveWallet(
+      uid,
+      walletId
+    );
 
-  if (ok) {
-    await sendWalletList(ctx, uid);
+    await ctx.reply(
+      ok
+        ? "✅ Active wallet switched."
+        : "❌ Wallet not found."
+    );
+
+    if (ok) {
+      await sendWalletList(ctx, uid);
+    }
   }
-});
+);
 
-bot.action(/^WALLET_DELETE_(.+)$/, async (ctx) => {
-  await ctx.answerCbQuery();
+bot.action(
+  /^WALLET_DELETE_(.+)$/,
+  async (ctx) => {
+    await ctx.answerCbQuery();
 
-  const uid = requireUserId(ctx);
-  if (!uid) return;
+    const uid = requireUserId(ctx);
 
-  const walletId = ctx.match[1];
+    if (!uid) return;
 
-  const ok = deleteWallet(uid, walletId);
+    const walletId = ctx.match[1];
 
-  await ctx.reply(
-    ok
-      ? "🗑 Wallet deleted."
-      : "Wallet not found."
-  );
+    const ok = deleteWallet(
+      uid,
+      walletId
+    );
 
-  if (ok) {
-    await sendWalletList(ctx, uid);
+    await ctx.reply(
+      ok
+        ? "🗑 Wallet deleted."
+        : "❌ Wallet not found."
+    );
+
+    if (ok) {
+      await sendWalletList(ctx, uid);
+    }
   }
-});
+);
 
-// ---------- Trade actions ----------
+// ============================================================
+// TRADING
+// ============================================================
 
-bot.action(/^TRADE_BUY_(.+)$/, async (ctx) => {
-  await ctx.answerCbQuery();
+bot.action(
+  /^TRADE_BUY_(.+)$/,
+  async (ctx) => {
+    await ctx.answerCbQuery();
 
-  const tokenAddress = ctx.match[1];
+    const tokenAddress =
+      ctx.match[1];
 
-  await ctx.reply(
-    "⚡ BUY",
-    buyAmountKeyboard(tokenAddress)
-  );
-});
+    await ctx.reply(
+      "⚡ BUY",
+      buyAmountKeyboard(tokenAddress)
+    );
+  }
+);
 
-bot.action(/^TRADE_SELL_(.+)$/, async (ctx) => {
-  await ctx.answerCbQuery();
+bot.action(
+  /^TRADE_SELL_(.+)$/,
+  async (ctx) => {
+    await ctx.answerCbQuery();
 
-  const tokenAddress = ctx.match[1];
+    const tokenAddress =
+      ctx.match[1];
 
-  await ctx.reply(
-    "📉 SELL",
-    sellPercentKeyboard(tokenAddress)
-  );
-});
+    await ctx.reply(
+      "📉 SELL",
+      sellPercentKeyboard(tokenAddress)
+    );
+  }
+);
 
-bot.action(/^BUYAMT_CUSTOM_(.+)$/, async (ctx) => {
-  await ctx.answerCbQuery();
+// Custom buy amount
+bot.action(
+  /^BUYAMT_CUSTOM_(.+)$/,
+  async (ctx) => {
+    await ctx.answerCbQuery();
 
-  const uid = requireUserId(ctx);
-  if (!uid) return;
+    const uid = requireUserId(ctx);
 
-  const tokenAddress = ctx.match[1];
+    if (!uid) return;
 
-  setPendingInput(uid, {
-    kind: "CUSTOM_BUY_AMOUNT",
-    context: {
-      tokenAddress,
-    },
-  });
+    const tokenAddress =
+      ctx.match[1];
 
-  await ctx.reply(
-    "Send the ETH amount to buy (e.g. 0.15)."
-  );
-});
+    setPendingInput(uid, {
+      kind: "CUSTOM_BUY_AMOUNT",
+      context: {
+        tokenAddress,
+      },
+    });
 
+    await ctx.reply(
+      "Enter the ETH amount to buy.\n\nExample: 0.15"
+    );
+  }
+);
+
+// Preset buy amount
 bot.action(
   /^BUYAMT_(0x[a-fA-F0-9]{40})_([\d.]+)$/,
   async (ctx) => {
     await ctx.answerCbQuery();
 
     const uid = requireUserId(ctx);
+
     if (!uid) return;
 
-    const [, tokenAddress, amountStr] = ctx.match;
+    const tokenAddress =
+      ctx.match[1];
+
+    const amountStr =
+      ctx.match[2];
+
+    const amount =
+      validatePositiveNumber(amountStr);
+
+    if (amount === null) {
+      await ctx.reply(
+        "❌ Invalid buy amount."
+      );
+
+      return;
+    }
 
     await startBuyFlow(
       ctx,
       uid,
       tokenAddress,
-      Number(amountStr)
+      amount
     );
   }
 );
 
+// Sell percentage
 bot.action(
   /^SELLPCT_(0x[a-fA-F0-9]{40})_(\d+)$/,
   async (ctx) => {
     await ctx.answerCbQuery();
 
     const uid = requireUserId(ctx);
+
     if (!uid) return;
 
-    const [, tokenAddress, pctStr] = ctx.match;
+    const tokenAddress =
+      ctx.match[1];
+
+    const pctStr =
+      ctx.match[2];
+
+    const amountPercent =
+      validatePositiveNumber(pctStr);
+
+    if (
+      amountPercent === null ||
+      amountPercent > 100
+    ) {
+      await ctx.reply(
+        "❌ Invalid sell percentage."
+      );
+
+      return;
+    }
 
     await startSellFlow(
       ctx,
       uid,
       tokenAddress,
-      Number(pctStr)
+      amountPercent
     );
   }
 );
 
-bot.action(/^CONFIRM_EXEC_(.+)$/, async (ctx) => {
-  await ctx.answerCbQuery();
+// Confirm trade
+bot.action(
+  /^CONFIRM_EXEC_(.+)$/,
+  async (ctx) => {
+    await ctx.answerCbQuery();
 
-  const uid = requireUserId(ctx);
-  if (!uid) return;
+    const uid = requireUserId(ctx);
 
-  const confirmationId = ctx.match[1];
+    if (!uid) return;
 
-  const confirmation =
-    consumeConfirmation(confirmationId);
+    const confirmationId =
+      ctx.match[1];
 
-  if (!confirmation) {
-    await ctx.reply(
-      "This confirmation has expired. Please start the trade again."
+    const confirmation =
+      consumeConfirmation(
+        confirmationId
+      );
+
+    if (!confirmation) {
+      await ctx.reply(
+        "❌ This confirmation has expired. Please start the trade again."
+      );
+
+      return;
+    }
+
+    await executeConfirmedTrade(
+      ctx,
+      uid,
+      confirmationId,
+      confirmation
     );
-    return;
   }
+);
 
-  await executeConfirmedTrade(
-    ctx,
-    uid,
-    confirmationId,
-    confirmation
-  );
-});
+// Cancel trade
+bot.action(
+  /^CONFIRM_CANCEL_(.+)$/,
+  async (ctx) => {
+    await ctx.answerCbQuery();
 
-bot.action(/^CONFIRM_CANCEL_(.+)$/, async (ctx) => {
-  await ctx.answerCbQuery();
+    const confirmationId =
+      ctx.match[1];
 
-  const confirmationId = ctx.match[1];
-
-  cancelConfirmation(confirmationId);
-
-  await ctx.reply("❌ Trade cancelled.");
-});
-
-// ---------- Sniper ----------
-
-bot.action("SNIPER_TOGGLE", async (ctx) => {
-  await ctx.answerCbQuery();
-
-  const uid = requireUserId(ctx);
-  if (!uid) return;
-
-  const current = getSniperSettings(uid);
-
-  if (current.active) {
-    stopSniper(uid);
-  } else {
-    startSniper(uid);
-  }
-
-  await sendSniperMenu(ctx, uid);
-});
-
-bot.action("SNIPER_SETTINGS", async (ctx) => {
-  await ctx.answerCbQuery();
-
-  const uid = requireUserId(ctx);
-  if (!uid) return;
-
-  const s = getSniperSettings(uid);
-
-  await ctx.reply(
-    [
-      "🎯 SNIPER SETTINGS",
-      "",
-      `Minimum Score: ${s.minScore}`,
-      `Maximum Risk: ${s.maxRisk}`,
-      `Minimum Liquidity: ${money(s.minLiquidityUsd)}`,
-      `Maximum Market Cap: ${money(s.maxMarketCapUsd)}`,
-      `Maximum Buy: ${formatEth(s.maxBuyEth)}`,
-      "",
-      "Edit settings by messaging: /sniperset field value",
-      "Fields: minscore, maxrisk, minliq, maxmcap, maxbuy",
-    ].join("\n")
-  );
-});
-
-bot.command("sniperset", async (ctx) => {
-  const uid = requireUserId(ctx);
-  if (!uid) return;
-
-  const parts = ctx.message.text
-    .split(" ")
-    .slice(1);
-
-  const [field, valueStr] = parts;
-
-  const value = Number(valueStr);
-
-  if (!field || Number.isNaN(value)) {
-    await ctx.reply(
-      "Usage: /sniperset field value"
+    cancelConfirmation(
+      confirmationId
     );
-    return;
-  }
 
-  const map: Record<string, string> = {
-    minscore: "minScore",
-    maxrisk: "maxRisk",
-    minliq: "minLiquidityUsd",
-    maxmcap: "maxMarketCapUsd",
-    maxbuy: "maxBuyEth",
-  };
-
-  const key = map[field.toLowerCase()];
-
-  if (!key) {
     await ctx.reply(
-      "Unknown field. Use: minscore, maxrisk, minliq, maxmcap, maxbuy"
+      "❌ Trade cancelled."
     );
-    return;
   }
+);
 
-  updateSniperSettings(uid, {
-    [key]: value,
-  } as never);
+// ============================================================
+// SNIPER
+// ============================================================
 
-  await ctx.reply(
-    `✅ Updated ${field} to ${value}.`
-  );
-});
+bot.action(
+  "SNIPER_TOGGLE",
+  async (ctx) => {
+    await ctx.answerCbQuery();
 
-// ---------- Autopilot ----------
+    const uid = requireUserId(ctx);
 
-bot.action("AUTOPILOT_TOGGLE", async (ctx) => {
-  await ctx.answerCbQuery();
+    if (!uid) return;
 
-  const uid = requireUserId(ctx);
-  if (!uid) return;
+    const current =
+      getSniperSettings(uid);
 
-  const current = getAutopilotSettings(uid);
+    if (current.active) {
+      stopSniper(uid);
+    } else {
+      startSniper(uid);
+    }
 
-  if (current.active) {
-    stopAutopilot(uid);
-  } else {
-    startAutopilot(uid);
-  }
-
-  await sendAutopilotMenu(ctx, uid);
-});
-
-bot.action("AUTOPILOT_SETTINGS", async (ctx) => {
-  await ctx.answerCbQuery();
-
-  const uid = requireUserId(ctx);
-  if (!uid) return;
-
-  const s = getAutopilotSettings(uid);
-
-  await ctx.reply(
-    [
-      "🤖 AUTOPILOT SETTINGS",
-      "",
-      `Capital: ${formatEth(s.capitalEth)}`,
-      `Max Trade: ${formatEth(s.maxTradeEth)}`,
-      `Max Positions: ${s.maxPositions}`,
-      `Minimum Score: ${s.minScore}`,
-      `Maximum Risk: ${s.maxRisk}`,
-      `Stop Loss: ${s.stopLossPercent}%`,
-      `Trailing Stop: ${s.trailingStopPercent}%`,
-      `Take Profit: ${s.takeProfitLevels.join("% / ")}%`,
-      "",
-      "Edit settings by messaging: /autopilotset field value",
-      "Fields: capital, maxtrade, maxpos, minscore, maxrisk, stoploss, trailstop",
-    ].join("\n")
-  );
-});
-
-bot.command("autopilotset", async (ctx) => {
-  const uid = requireUserId(ctx);
-  if (!uid) return;
-
-  const parts = ctx.message.text
-    .split(" ")
-    .slice(1);
-
-  const [field, valueStr] = parts;
-
-  const value = Number(valueStr);
-
-  if (!field || Number.isNaN(value)) {
-    await ctx.reply(
-      "Usage: /autopilotset field value"
+    await sendSniperMenu(
+      ctx,
+      uid
     );
-    return;
   }
+);
 
-  const map: Record<string, string> = {
-    capital: "capitalEth",
-    maxtrade: "maxTradeEth",
-    maxpos: "maxPositions",
-    minscore: "minScore",
-    maxrisk: "maxRisk",
-    stoploss: "stopLossPercent",
-    trailstop: "trailingStopPercent",
-  };
+bot.action(
+  "SNIPER_SETTINGS",
+  async (ctx) => {
+    await ctx.answerCbQuery();
 
-  const key = map[field.toLowerCase()];
+    const uid = requireUserId(ctx);
 
-  if (!key) {
+    if (!uid) return;
+
+    const s =
+      getSniperSettings(uid);
+
     await ctx.reply(
-      "Unknown field. Use: capital, maxtrade, maxpos, minscore, maxrisk, stoploss, trailstop"
+      [
+        "🎯 SNIPER SETTINGS",
+        "",
+        `Minimum Score: ${s.minScore}`,
+        `Maximum Risk: ${s.maxRisk}`,
+        `Minimum Liquidity: ${money(s.minLiquidityUsd)}`,
+        `Maximum Market Cap: ${money(s.maxMarketCapUsd)}`,
+        `Maximum Buy: ${formatEth(s.maxBuyEth)}`,
+        "",
+        "Use:",
+        "/sniperset field value",
+        "",
+        "Fields:",
+        "minscore",
+        "maxrisk",
+        "minliq",
+        "maxmcap",
+        "maxbuy",
+      ].join("\n")
     );
-    return;
   }
+);
 
-  updateAutopilotSettings(uid, {
-    [key]: value,
-  } as never);
+bot.command(
+  "sniperset",
+  async (ctx) => {
+    const uid = requireUserId(ctx);
 
-  await ctx.reply(
-    `✅ Updated ${field} to ${value}.`
-  );
-});
+    if (!uid) return;
 
-// ---------- Smart Money ----------
+    const parts =
+      ctx.message.text
+        .split(" ")
+        .slice(1);
 
-bot.action("SMARTMONEY_TRACK", async (ctx) => {
-  await ctx.answerCbQuery();
+    const field =
+      parts[0];
 
-  const uid = requireUserId(ctx);
-  if (!uid) return;
+    const valueStr =
+      parts[1];
 
-  setPendingInput(uid, {
-    kind: "TRACK_WALLET_ADDRESS",
-  });
+    const value =
+      Number(valueStr);
 
-  await ctx.reply(
-    "Send the wallet address to track."
-  );
-});
+    if (
+      !field ||
+      Number.isNaN(value)
+    ) {
+      await ctx.reply(
+        "Usage: /sniperset field value"
+      );
 
-bot.action("SMARTMONEY_LIST", async (ctx) => {
-  await ctx.answerCbQuery();
+      return;
+    }
 
-  const uid = requireUserId(ctx);
-  if (!uid) return;
+    const map: Record<
+      string,
+      string
+    > = {
+      minscore: "minScore",
+      maxrisk: "maxRisk",
+      minliq: "minLiquidityUsd",
+      maxmcap: "maxMarketCapUsd",
+      maxbuy: "maxBuyEth",
+    };
 
-  const wallets = listTrackedWallets(uid);
+    const key =
+      map[field.toLowerCase()];
 
-  if (wallets.length === 0) {
+    if (!key) {
+      await ctx.reply(
+        "Unknown field."
+      );
+
+      return;
+    }
+
+    updateSniperSettings(
+      uid,
+      {
+        [key]: value,
+      } as never
+    );
+
     await ctx.reply(
-      "No tracked wallets yet.",
+      `✅ Updated ${field} to ${value}.`
+    );
+  }
+);
+
+// ============================================================
+// AUTOPILOT
+// ============================================================
+
+bot.action(
+  "AUTOPILOT_TOGGLE",
+  async (ctx) => {
+    await ctx.answerCbQuery();
+
+    const uid = requireUserId(ctx);
+
+    if (!uid) return;
+
+    const current =
+      getAutopilotSettings(uid);
+
+    if (current.active) {
+      stopAutopilot(uid);
+    } else {
+      startAutopilot(uid);
+    }
+
+    await sendAutopilotMenu(
+      ctx,
+      uid
+    );
+  }
+);
+
+bot.action(
+  "AUTOPILOT_SETTINGS",
+  async (ctx) => {
+    await ctx.answerCbQuery();
+
+    const uid = requireUserId(ctx);
+
+    if (!uid) return;
+
+    const s =
+      getAutopilotSettings(uid);
+
+    await ctx.reply(
+      [
+        "🤖 AUTOPILOT SETTINGS",
+        "",
+        `Capital: ${formatEth(s.capitalEth)}`,
+        `Max Trade: ${formatEth(s.maxTradeEth)}`,
+        `Max Positions: ${s.maxPositions}`,
+        `Minimum Score: ${s.minScore}`,
+        `Maximum Risk: ${s.maxRisk}`,
+        `Stop Loss: ${s.stopLossPercent}%`,
+        `Trailing Stop: ${s.trailingStopPercent}%`,
+        `Take Profit: ${s.takeProfitLevels.join("% / ")}%`,
+        "",
+        "Use:",
+        "/autopilotset field value",
+      ].join("\n")
+    );
+  }
+);
+
+bot.command(
+  "autopilotset",
+  async (ctx) => {
+    const uid = requireUserId(ctx);
+
+    if (!uid) return;
+
+    const parts =
+      ctx.message.text
+        .split(" ")
+        .slice(1);
+
+    const field =
+      parts[0];
+
+    const valueStr =
+      parts[1];
+
+    const value =
+      Number(valueStr);
+
+    if (
+      !field ||
+      Number.isNaN(value)
+    ) {
+      await ctx.reply(
+        "Usage: /autopilotset field value"
+      );
+
+      return;
+    }
+
+    const map: Record<
+      string,
+      string
+    > = {
+      capital: "capitalEth",
+      maxtrade: "maxTradeEth",
+      maxpos: "maxPositions",
+      minscore: "minScore",
+      maxrisk: "maxRisk",
+      stoploss: "stopLossPercent",
+      trailstop: "trailingStopPercent",
+    };
+
+    const key =
+      map[field.toLowerCase()];
+
+    if (!key) {
+      await ctx.reply(
+        "Unknown field."
+      );
+
+      return;
+    }
+
+    updateAutopilotSettings(
+      uid,
+      {
+        [key]: value,
+      } as never
+    );
+
+    await ctx.reply(
+      `✅ Updated ${field} to ${value}.`
+    );
+  }
+);
+
+// ============================================================
+// SMART MONEY
+// ============================================================
+
+bot.action(
+  "SMARTMONEY_TRACK",
+  async (ctx) => {
+    await ctx.answerCbQuery();
+
+    const uid = requireUserId(ctx);
+
+    if (!uid) return;
+
+    setPendingInput(uid, {
+      kind: "TRACK_WALLET_ADDRESS",
+    });
+
+    await ctx.reply(
+      "Send the wallet address to track."
+    );
+  }
+);
+
+bot.action(
+  "SMARTMONEY_LIST",
+  async (ctx) => {
+    await ctx.answerCbQuery();
+
+    const uid = requireUserId(ctx);
+
+    if (!uid) return;
+
+    const wallets =
+      listTrackedWallets(uid);
+
+    if (wallets.length === 0) {
+      await ctx.reply(
+        "No tracked wallets yet.",
+        smartMoneyMenuKeyboard
+      );
+
+      return;
+    }
+
+    const lines =
+      await Promise.all(
+        wallets.map(
+          async (w) => {
+            try {
+              const activity =
+                await getWalletActivity(
+                  w.address
+                );
+
+              return [
+                w.label,
+                formatAddress(
+                  w.address
+                ),
+                `Balance: ${Number(activity.balanceEth).toFixed(4)} ETH`,
+                `Transactions: ${activity.txCount}`,
+              ].join("\n");
+            } catch {
+              return [
+                w.label,
+                formatAddress(
+                  w.address
+                ),
+                "Activity unavailable",
+              ].join("\n");
+            }
+          }
+        )
+      );
+
+    await ctx.reply(
+      [
+        "🐋 TRACKED WALLETS",
+        "",
+        lines.join("\n\n"),
+      ].join("\n"),
       smartMoneyMenuKeyboard
     );
-    return;
   }
+);
 
-  const lines = await Promise.all(
-    wallets.map(async (w) => {
-      try {
-        const activity =
-          await getWalletActivity(w.address);
+// ============================================================
+// ALERTS
+// ============================================================
 
-        return [
-          `${w.label}`,
-          `${formatAddress(w.address)}`,
-          `Balance: ${Number(activity.balanceEth).toFixed(4)} ETH | Txs: ${activity.txCount}`,
-        ].join("\n");
-      } catch {
-        return [
-          `${w.label}`,
-          `${formatAddress(w.address)}`,
-          "Activity unavailable",
-        ].join("\n");
-      }
-    })
-  );
+bot.action(
+  "ALERTS_ENABLE",
+  async (ctx) => {
+    await ctx.answerCbQuery();
 
-  await ctx.reply(
-    `🐋 TRACKED WALLETS\n\n${lines.join("\n\n")}`,
-    smartMoneyMenuKeyboard
-  );
-});
+    const uid = requireUserId(ctx);
 
-// ---------- Alerts ----------
+    if (!uid) return;
 
-bot.action("ALERTS_ENABLE", async (ctx) => {
-  await ctx.answerCbQuery();
+    enableAlerts(uid);
 
-  const uid = requireUserId(ctx);
-  if (!uid) return;
+    await ctx.reply(
+      "🔔 Alerts enabled.",
+      alertsMenuKeyboard(true)
+    );
+  }
+);
 
-  enableAlerts(uid);
+bot.action(
+  "ALERTS_DISABLE",
+  async (ctx) => {
+    await ctx.answerCbQuery();
 
-  await ctx.reply(
-    "🔔 Alerts enabled.",
-    alertsMenuKeyboard(true)
-  );
-});
+    const uid = requireUserId(ctx);
 
-bot.action("ALERTS_DISABLE", async (ctx) => {
-  await ctx.answerCbQuery();
+    if (!uid) return;
 
-  const uid = requireUserId(ctx);
-  if (!uid) return;
+    disableAlerts(uid);
 
-  disableAlerts(uid);
+    await ctx.reply(
+      "🔕 Alerts disabled.",
+      alertsMenuKeyboard(false)
+    );
+  }
+);
 
-  await ctx.reply(
-    "🔕 Alerts disabled.",
-    alertsMenuKeyboard(false)
-  );
-});
-
-// ---------- Free-text handling ----------
+// ============================================================
+// FREE TEXT
+// ============================================================
 
 bot.on("text", async (ctx) => {
   const uid = requireUserId(ctx);
+
   if (!uid) return;
 
-  const text = ctx.message.text.trim();
+  const text =
+    ctx.message.text.trim();
 
-  if (text.startsWith("/")) return;
+  if (text.startsWith("/")) {
+    return;
+  }
 
-  const pending = getPendingInput(uid);
+  const pending =
+    getPendingInput(uid);
 
-  if (pending?.kind === "IMPORT_PRIVATE_KEY") {
-    setPendingInput(uid, null);
+  // -----------------------------
+  // Private key import
+  // -----------------------------
+
+  if (
+    pending?.kind ===
+    "IMPORT_PRIVATE_KEY"
+  ) {
+    setPendingInput(
+      uid,
+      null
+    );
 
     try {
-      const wallet = importFromPrivateKey(
-        text,
-        `Wallet ${listWallets(uid).length + 1}`
+      const wallet =
+        importFromPrivateKey(
+          text,
+          `Wallet ${listWallets(uid).length + 1}`
+        );
+
+      addWallet(
+        uid,
+        wallet
       );
 
-      addWallet(uid, wallet);
-
       await ctx.reply(
-        `✅ Wallet imported.\n\nAddress: ${wallet.address}`
+        [
+          "✅ Wallet imported.",
+          "",
+          `Address: ${wallet.address}`,
+        ].join("\n")
       );
     } catch {
       await ctx.reply(
@@ -808,19 +1108,37 @@ bot.on("text", async (ctx) => {
     return;
   }
 
-  if (pending?.kind === "IMPORT_SEED_PHRASE") {
-    setPendingInput(uid, null);
+  // -----------------------------
+  // Seed phrase import
+  // -----------------------------
+
+  if (
+    pending?.kind ===
+    "IMPORT_SEED_PHRASE"
+  ) {
+    setPendingInput(
+      uid,
+      null
+    );
 
     try {
-      const wallet = importFromSeedPhrase(
-        text,
-        `Wallet ${listWallets(uid).length + 1}`
+      const wallet =
+        importFromSeedPhrase(
+          text,
+          `Wallet ${listWallets(uid).length + 1}`
+        );
+
+      addWallet(
+        uid,
+        wallet
       );
 
-      addWallet(uid, wallet);
-
       await ctx.reply(
-        `✅ Wallet imported.\n\nAddress: ${wallet.address}`
+        [
+          "✅ Wallet imported.",
+          "",
+          `Address: ${wallet.address}`,
+        ].join("\n")
       );
     } catch {
       await ctx.reply(
@@ -831,19 +1149,33 @@ bot.on("text", async (ctx) => {
     return;
   }
 
-  if (pending?.kind === "CUSTOM_BUY_AMOUNT") {
-    setPendingInput(uid, null);
+  // -----------------------------
+  // Custom buy amount
+  // -----------------------------
+
+  if (
+    pending?.kind ===
+    "CUSTOM_BUY_AMOUNT"
+  ) {
+    setPendingInput(
+      uid,
+      null
+    );
 
     const tokenAddress =
       pending.context?.tokenAddress;
 
-    const amount = Number(text);
+    const amount =
+      validatePositiveNumber(text);
 
     if (
       !tokenAddress ||
-      !validatePositiveNumber(amount)
+      amount === null
     ) {
-      await ctx.reply("Invalid amount.");
+      await ctx.reply(
+        "❌ Invalid ETH amount."
+      );
+
       return;
     }
 
@@ -857,15 +1189,30 @@ bot.on("text", async (ctx) => {
     return;
   }
 
-  if (pending?.kind === "TRACK_WALLET_ADDRESS") {
-    setPendingInput(uid, null);
+  // -----------------------------
+  // Track wallet
+  // -----------------------------
 
-    const result = trackWallet(uid, text);
+  if (
+    pending?.kind ===
+    "TRACK_WALLET_ADDRESS"
+  ) {
+    setPendingInput(
+      uid,
+      null
+    );
+
+    const result =
+      trackWallet(
+        uid,
+        text
+      );
 
     if (!result) {
       await ctx.reply(
         "❌ Invalid wallet address."
       );
+
       return;
     }
 
@@ -877,72 +1224,97 @@ bot.on("text", async (ctx) => {
     return;
   }
 
+  // -----------------------------
+  // Token address
+  // -----------------------------
+
   if (validateAddress(text)) {
     await analyzeAndReply(
       ctx,
       uid,
       text
     );
-  } else {
-    await ctx.reply(
-      "Send a valid Robinhood Chain token address, or use /help for commands."
-    );
+
+    return;
   }
+
+  await ctx.reply(
+    "Send a valid Robinhood Chain token address, or use /help."
+  );
 });
 
-// ---------- Helper senders ----------
+// ============================================================
+// WALLET LIST
+// ============================================================
 
 async function sendWalletList(
   ctx: import("telegraf").Context,
   uid: number
 ) {
-  const wallets = listWallets(uid);
-  const active = getActiveWallet(uid);
+  const wallets =
+    listWallets(uid);
+
+  const active =
+    getActiveWallet(uid);
 
   if (wallets.length === 0) {
     await ctx.reply(
       "No wallets yet. Create or import one.",
       walletMenuKeyboard
     );
+
     return;
   }
 
   await ctx.reply(
     "📋 LIST WALLETS",
     walletListKeyboard(
-      wallets.map((w) => ({
-        id: w.id,
-        label: `${w.label} (${formatAddress(w.address)})`,
-      })),
+      wallets.map(
+        (w) => ({
+          id: w.id,
+          label:
+            `${w.label} (${formatAddress(w.address)})`,
+        })
+      ),
       active?.id ?? null
     )
   );
 }
 
+// ============================================================
+// BALANCE
+// ============================================================
+
 async function sendBalance(
   ctx: import("telegraf").Context,
   uid: number
 ) {
-  const wallet = getActiveWallet(uid);
+  const wallet =
+    getActiveWallet(uid);
 
   if (!wallet) {
     await ctx.reply(
       "No active wallet. Open 💼 WALLET to create or import one first.",
       walletMenuKeyboard
     );
+
     return;
   }
 
   try {
     const balance =
-      await getBalanceEth(wallet.address);
+      await getBalanceEth(
+        wallet.address
+      );
 
     await ctx.reply(
       [
         "💰 BALANCE",
         "",
         wallet.label,
-        formatAddress(wallet.address),
+        formatAddress(
+          wallet.address
+        ),
         "",
         `${Number(balance).toFixed(4)} ETH`,
       ].join("\n")
@@ -950,26 +1322,34 @@ async function sendBalance(
   } catch (err) {
     logger.error(
       "Balance fetch failed",
-      { error: String(err) }
+      {
+        error: String(err),
+      }
     );
 
     await ctx.reply(
-      "Failed to fetch balance from the chain."
+      "Failed to fetch balance from Robinhood Chain."
     );
   }
 }
+
+// ============================================================
+// POSITIONS
+// ============================================================
 
 async function sendPositions(
   ctx: import("telegraf").Context,
   uid: number
 ) {
-  const positions = listPositions(uid);
+  const positions =
+    listPositions(uid);
 
   if (positions.length === 0) {
     await ctx.reply(
       "📊 POSITIONS\n\nNo open positions.",
       homeKeyboard
     );
+
     return;
   }
 
@@ -993,13 +1373,17 @@ async function sendPositions(
           `$${p.tokenSymbol}`,
           "",
           "Amount:",
-          `${p.amountTokens.toFixed(4)}`,
+          p.amountTokens.toFixed(4),
           "",
           "Entry:",
-          money(p.entryPriceUsd),
+          money(
+            p.entryPriceUsd
+          ),
           "",
           "Current:",
-          money(token.priceUsd),
+          money(
+            token.priceUsd
+          ),
           "",
           "PnL:",
           `${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}%`,
@@ -1020,49 +1404,68 @@ async function sendPositions(
   }
 }
 
+// ============================================================
+// ORDERS
+// ============================================================
+
 async function sendOrders(
   ctx: import("telegraf").Context,
   uid: number
 ) {
-  const orders = listOrders(uid);
+  const orders =
+    listOrders(uid);
 
   if (orders.length === 0) {
     await ctx.reply(
       "📋 ORDERS\n\nNo orders yet.",
       homeKeyboard
     );
+
     return;
   }
 
-  const lines = orders
-    .slice(0, 20)
-    .map(
-      (o) =>
-        `${o.side} $${o.tokenSymbol}\n${
-          o.amountEth
-            ? formatEth(o.amountEth)
-            : `${o.amountPercent}%`
-        }\n${o.status}`
-    );
+  const lines =
+    orders
+      .slice(0, 20)
+      .map(
+        (o) =>
+          `${o.side} $${o.tokenSymbol}\n${
+            o.amountEth !== null &&
+            o.amountEth !== undefined
+              ? formatEth(o.amountEth)
+              : `${o.amountPercent ?? 0}%`
+          }\n${o.status}`
+      );
 
   await ctx.reply(
-    `📋 ORDERS\n\n${lines.join("\n\n")}`,
+    [
+      "📋 ORDERS",
+      "",
+      lines.join("\n\n"),
+    ].join("\n"),
     homeKeyboard
   );
 }
+
+// ============================================================
+// SNIPER MENU
+// ============================================================
 
 async function sendSniperMenu(
   ctx: import("telegraf").Context,
   uid: number
 ) {
-  const s = getSniperSettings(uid);
+  const s =
+    getSniperSettings(uid);
 
   await ctx.reply(
     [
       "🎯 SNIPER",
       "",
       "Status:",
-      s.active ? "ON" : "OFF",
+      s.active
+        ? "ON"
+        : "OFF",
       "",
       "Minimum Score",
       `${s.minScore}`,
@@ -1071,36 +1474,55 @@ async function sendSniperMenu(
       `${s.maxRisk}`,
       "",
       "Minimum Liquidity",
-      money(s.minLiquidityUsd),
+      money(
+        s.minLiquidityUsd
+      ),
       "",
       "Maximum Market Cap",
-      money(s.maxMarketCapUsd),
+      money(
+        s.maxMarketCapUsd
+      ),
       "",
       "Maximum Buy",
-      formatEth(s.maxBuyEth),
+      formatEth(
+        s.maxBuyEth
+      ),
     ].join("\n"),
-    sniperMenuKeyboard(s.active)
+    sniperMenuKeyboard(
+      s.active
+    )
   );
 }
+
+// ============================================================
+// AUTOPILOT MENU
+// ============================================================
 
 async function sendAutopilotMenu(
   ctx: import("telegraf").Context,
   uid: number
 ) {
-  const s = getAutopilotSettings(uid);
+  const s =
+    getAutopilotSettings(uid);
 
   await ctx.reply(
     [
       "🤖 AUTOPILOT",
       "",
       "Status:",
-      s.active ? "ON" : "OFF",
+      s.active
+        ? "ON"
+        : "OFF",
       "",
       "Capital",
-      formatEth(s.capitalEth),
+      formatEth(
+        s.capitalEth
+      ),
       "",
       "Max Trade",
-      formatEth(s.maxTradeEth),
+      formatEth(
+        s.maxTradeEth
+      ),
       "",
       "Max Positions",
       `${s.maxPositions}`,
@@ -1120,20 +1542,39 @@ async function sendAutopilotMenu(
       "Take Profit",
       `${s.takeProfitLevels.join("% / ")}%`,
     ].join("\n"),
-    autopilotMenuKeyboard(s.active)
+    autopilotMenuKeyboard(
+      s.active
+    )
   );
 }
 
-// ---------- Background ----------
+// ============================================================
+// HEARTBEAT
+// ============================================================
 
-cron.schedule("*/30 * * * * *", () => {
-  logger.debug("Heartbeat tick");
-});
+cron.schedule(
+  "*/30 * * * * *",
+  () => {
+    logger.debug(
+      "ERROR404 heartbeat tick"
+    );
+  }
+);
 
-// ---------- Boot ----------
+// ============================================================
+// START BOT
+// ============================================================
 
 async function main(): Promise<void> {
+  logger.info(
+    "Connecting to Robinhood Chain..."
+  );
+
   await verifyChainConnection();
+
+  logger.info(
+    "Robinhood Chain connection verified."
+  );
 
   await bot.launch();
 
@@ -1142,19 +1583,29 @@ async function main(): Promise<void> {
   );
 }
 
-main().catch((err) => {
-  logger.error(
-    "Fatal startup error",
-    { error: String(err) }
-  );
+main().catch(
+  (err) => {
+    logger.error(
+      "Fatal startup error",
+      {
+        error: String(err),
+      }
+    );
 
-  process.exit(1);
-});
+    process.exit(1);
+  }
+);
 
-process.once("SIGINT", () => {
-  bot.stop("SIGINT");
-});
+process.once(
+  "SIGINT",
+  () => {
+    bot.stop("SIGINT");
+  }
+);
 
-process.once("SIGTERM", () => {
-  bot.stop("SIGTERM");
-});
+process.once(
+  "SIGTERM",
+  () => {
+    bot.stop("SIGTERM");
+  }
+);
