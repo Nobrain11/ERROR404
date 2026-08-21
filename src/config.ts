@@ -1,34 +1,30 @@
-import dotenv from "dotenv";
-
-dotenv.config();
-
-function required(name: string): string {
-  const value = process.env[name];
-  if (!value || value.trim() === "") {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
-}
-
-function optional(name: string): string | null {
-  const value = process.env[name];
-  return value && value.trim() !== "" ? value : null;
-}
+import "dotenv/config";
 
 export const config = {
-  telegramBotToken: required("TELEGRAM_BOT_TOKEN"),
-  rpcUrl: required("RPC_URL"),
-  chainId: required("CHAIN_ID"),
-  debug: (process.env.DEBUG || "false").toLowerCase() === "true",
+  telegramBotToken:
+    process.env.TELEGRAM_BOT_TOKEN ?? "",
 
-  // Market data — required for real prices. If unset, market.ts reports
-  // "Market data unavailable." instead of fabricating values.
-  dexApiUrl: optional("DEX_API_URL"),
+  adminChatId:
+    Number(process.env.ADMIN_CHAT_ID ?? 0),
 
-  // Trade execution — required to actually place on-chain swaps. If unset,
-  // trade execution fails cleanly with a clear error instead of no-op faking a fill.
-  routerAddress: optional("ROUTER_ADDRESS"),
-  wethAddress: optional("WETH_ADDRESS"),
+  rpcUrl:
+    process.env.RPC_URL ?? "",
 
-  confirmationTtlMs: 30_000,
+  chainId:
+    Number(process.env.CHAIN_ID ?? 0),
+
+  logLevel:
+    process.env.LOG_LEVEL ?? "info",
 };
+
+if (!config.telegramBotToken) {
+  throw new Error(
+    "TELEGRAM_BOT_TOKEN is not configured."
+  );
+}
+
+if (!config.adminChatId) {
+  console.warn(
+    "⚠️ ADMIN_CHAT_ID is not configured. Admin notifications are disabled."
+  );
+}
