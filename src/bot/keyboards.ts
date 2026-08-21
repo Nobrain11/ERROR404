@@ -37,37 +37,37 @@ export const homeKeyboard = Markup.inlineKeyboard([
 export const walletMenuKeyboard = Markup.inlineKeyboard([
   [
     Markup.button.callback(
-      "➕ CREATE WALLET",
+      "CREATE WALLET",
       "WALLET_CREATE"
     ),
     Markup.button.callback(
-      "🔑 IMPORT PRIVATE KEY",
+      "IMPORT PRIVATE KEY",
       "WALLET_IMPORT_PK"
     ),
   ],
   [
     Markup.button.callback(
-      "🌱 IMPORT SEED PHRASE",
+      "IMPORT SEED PHRASE",
       "WALLET_IMPORT_SEED"
     ),
     Markup.button.callback(
-      "📋 LIST WALLETS",
+      "LIST WALLETS",
       "WALLET_LIST"
     ),
   ],
   [
     Markup.button.callback(
-      "📤 EXPORT WALLET",
+      "EXPORT WALLET",
       "WALLET_EXPORT"
     ),
     Markup.button.callback(
-      "💰 BALANCE",
+      "BALANCE",
       "WALLET_BALANCE"
     ),
   ],
   [
     Markup.button.callback(
-      "↩️ RETURN",
+      "RETURN",
       "MENU_HOME"
     ),
   ],
@@ -94,7 +94,7 @@ export function walletListKeyboard(
   ]);
   rows.push([
     Markup.button.callback(
-      "↩️ RETURN",
+      "RETURN",
       "MENU_WALLET"
     ),
   ]);
@@ -136,7 +136,7 @@ export function tokenAnalysisKeyboard(
   ]);
 }
 /* =========================================================
-   BUY AMOUNT
+   BUY AMOUNTS
 ========================================================= */
 export function buyAmountKeyboard(
   tokenAddress: string
@@ -177,7 +177,7 @@ export function buyAmountKeyboard(
   ]);
 }
 /* =========================================================
-   SELL PERCENTAGE
+   SELL PERCENTAGES
 ========================================================= */
 export function sellPercentKeyboard(
   tokenAddress: string
