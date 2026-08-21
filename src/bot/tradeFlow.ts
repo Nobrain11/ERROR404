@@ -49,7 +49,6 @@ import {
   money,
   formatEth,
   percent,
-  scoreBar,
 } from "../utils/format";
 
 import {
@@ -65,48 +64,129 @@ import {
   logger,
 } from "../utils/logger";
 
+// ============================================================
+// SCANNER FORMATTERS
+// ============================================================
+
+function formatNullableMoney(
+  value: number | null
+): string {
+  if (
+    value === null ||
+    !Number.isFinite(value)
+  ) {
+    return "—";
+  }
+
+  return money(value);
+}
+
+function formatPercentValue(
+  value: number | null
+): string {
+  if (
+    value === null ||
+    !Number.isFinite(value)
+  ) {
+    return "—";
+  }
+
+  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
+}
+
+function riskLabel(
+  risk: number
+): string {
+  if (risk <= 20) {
+    return "🟢 LOW";
+  }
+
+  if (risk <= 40) {
+    return "🟡 MODERATE";
+  }
+
+  if (risk <= 65) {
+    return "🟠 HIGH";
+  }
+
+  return "🔴 EXTREME";
+}
+
+function liquidityLabel(
+  score: number
+): string {
+  if (score >= 75) {
+    return "🟢 GOOD";
+  }
+
+  if (score >= 50) {
+    return "🟡 FAIR";
+  }
+
+  if (score >= 25) {
+    return "🟠 LOW";
+  }
+
+  return "🔴 VERY LOW";
+}
+
+function momentumLabel(
+  score: number
+): string {
+  if (score >= 75) {
+    return "🟢 STRONG";
+  }
+
+  if (score >= 55) {
+    return "🟡 POSITIVE";
+  }
+
+  if (score >= 40) {
+    return "⚪ NEUTRAL";
+  }
+
+  return "🔴 WEAK";
+}
+
+// ============================================================
+// TOKEN SCANNER
+// ============================================================
+
 export function renderTokenAnalysis(
   scan: ScanResult
 ): string {
-  const t = scan.token;
+  const t =
+    scan.token;
+
+  const priceChange =
+    formatPercentValue(
+      t.priceChange24h
+    );
 
   return [
-    "🔎 ERROR404 ANALYSIS",
+    `🪙 ${t.name} ($${t.symbol})`,
     "",
-    `$${t.symbol}`,
+    t.address,
     "",
-    "Price",
-    money(t.priceUsd),
+    "🟢 ROBINHOOD CHAIN",
     "",
-    "Market Cap",
-    money(t.marketCapUsd),
+    `💵 Price      ${money(t.priceUsd)}`,
+    `💰 Market Cap ${formatNullableMoney(t.marketCapUsd)}`,
+    `💧 Liquidity  ${formatNullableMoney(t.liquidityUsd)}`,
+    `📊 24H Volume ${formatNullableMoney(t.volume24hUsd)}`,
+    `📈 24H Change ${priceChange}`,
     "",
-    "Liquidity",
-    money(t.liquidityUsd),
+    `⚡ Momentum   ${momentumLabel(scan.momentumScore)}`,
+    `💧 Liquidity  ${liquidityLabel(scan.liquidityScore)}`,
+    `🛡 Risk       ${riskLabel(scan.riskScore)}`,
     "",
-    "24H Volume",
-    money(t.volume24hUsd),
-    "",
-    "━━━━━━━━━━━━━━",
-    "",
-    "🔥 Momentum",
-    scoreBar(scan.momentumScore),
-    "",
-    "🐋 Smart Money",
-    scoreBar(scan.smartMoneyScore),
-    "",
-    "💧 Liquidity",
-    scoreBar(scan.liquidityScore),
-    "",
-    "🛡 Risk",
-    scoreBar(scan.riskScore),
-    "",
-    "━━━━━━━━━━━━━━",
-    "",
-    "ERROR404 SCORE",
-    `${Math.round(scan.score)}/100`,
+    `⚡ ERROR404 SCORE  ${Math.round(scan.score)}/100`,
   ].join("\n");
 }
+
+// ============================================================
+// SCAN
+// ============================================================
 
 export async function analyzeAndReply(
   ctx: Context,
@@ -115,7 +195,9 @@ export async function analyzeAndReply(
 ): Promise<void> {
   try {
     const token =
-      await getTokenMarketData(tokenAddress);
+      await getTokenMarketData(
+        tokenAddress
+      );
 
     const scan =
       scanToken(token);
@@ -127,27 +209,49 @@ export async function analyzeAndReply(
 
     await ctx.reply(
       renderTokenAnalysis(scan),
-      tokenAnalysisKeyboard(tokenAddress)
+      tokenAnalysisKeyboard(
+        tokenAddress
+      )
     );
   } catch (err) {
     if (
       err instanceof MarketDataUnavailableError
     ) {
       await ctx.reply(
-        "Market data unavailable."
-      );
-    } else {
-      logger.error(
-        "Analysis failed",
-        { error: String(err) }
+        [
+          "❌ TOKEN NOT FOUND",
+          "",
+          "No usable Robinhood Chain market data was found for this address.",
+          "",
+          "Make sure:",
+          "• the contract address is correct",
+          "• the token has a live Robinhood Chain pair",
+          "• DEX_API_URL is configured",
+        ].join("\n")
       );
 
-      await ctx.reply(
-        "Failed to analyze token. Please check the address and try again."
-      );
+      return;
     }
+
+    logger.error(
+      "Analysis failed",
+      {
+        error:
+          err instanceof Error
+            ? err.message
+            : String(err),
+      }
+    );
+
+    await ctx.reply(
+      "❌ Failed to analyze token."
+    );
   }
 }
+
+// ============================================================
+// BUY FLOW
+// ============================================================
 
 export async function startBuyFlow(
   ctx: Context,
@@ -155,8 +259,20 @@ export async function startBuyFlow(
   tokenAddress: string,
   amountEth: number
 ): Promise<void> {
+  if (
+    !Number.isFinite(amountEth) ||
+    amountEth <= 0
+  ) {
+    await ctx.reply(
+      "❌ Invalid ETH amount."
+    );
+    return;
+  }
+
   const wallet =
-    getActiveWallet(telegramId);
+    getActiveWallet(
+      telegramId
+    );
 
   if (!wallet) {
     await ctx.reply(
@@ -174,7 +290,7 @@ export async function startBuyFlow(
       );
   } catch {
     await ctx.reply(
-      "Market data unavailable."
+      "❌ Market data unavailable."
     );
     return;
   }
@@ -187,10 +303,19 @@ export async function startBuyFlow(
     scan
   );
 
-  const balanceEthStr =
-    await getBalanceEth(
-      wallet.address
+  let balanceEthStr: string;
+
+  try {
+    balanceEthStr =
+      await getBalanceEth(
+        wallet.address
+      );
+  } catch {
+    await ctx.reply(
+      "❌ Unable to read wallet balance."
     );
+    return;
+  }
 
   const balanceEth =
     Number(balanceEthStr);
@@ -207,9 +332,13 @@ export async function startBuyFlow(
   if (!guard.passed) {
     await ctx.reply(
       [
-        "Trade Guard blocked this trade:",
+        "🛡 TRADE GUARD",
+        "",
+        "Trade blocked.",
+        "",
         ...guard.reasons.map(
-          (r) => `• ${r}`
+          (reason) =>
+            `• ${reason}`
         ),
       ].join("\n")
     );
@@ -231,12 +360,13 @@ export async function startBuyFlow(
     [
       "⚡ CONFIRM BUY",
       "",
-      `$${token.symbol}`,
-      `Amount: ${formatEth(amountEth)}`,
-      `Price: ${money(token.priceUsd)}`,
-      `Score: ${Math.round(scan.score)}/100`,
+      `🪙 $${token.symbol}`,
       "",
-      "Expires in 30s.",
+      `Amount  ${formatEth(amountEth)}`,
+      `Price   ${money(token.priceUsd)}`,
+      `Score   ${Math.round(scan.score)}/100`,
+      "",
+      "Confirmation expires in 30 seconds.",
     ].join("\n"),
     confirmationKeyboard(
       confirmation.id
@@ -244,18 +374,35 @@ export async function startBuyFlow(
   );
 }
 
+// ============================================================
+// SELL FLOW
+// ============================================================
+
 export async function startSellFlow(
   ctx: Context,
   telegramId: number,
   tokenAddress: string,
   amountPercent: number
 ): Promise<void> {
+  if (
+    !Number.isFinite(amountPercent) ||
+    amountPercent <= 0 ||
+    amountPercent > 100
+  ) {
+    await ctx.reply(
+      "❌ Invalid sell percentage."
+    );
+    return;
+  }
+
   const wallet =
-    getActiveWallet(telegramId);
+    getActiveWallet(
+      telegramId
+    );
 
   if (!wallet) {
     await ctx.reply(
-      "No active wallet. Open 💼 WALLET to create or import one first."
+      "No active wallet."
     );
     return;
   }
@@ -282,13 +429,18 @@ export async function startSellFlow(
       );
   } catch {
     await ctx.reply(
-      "Market data unavailable."
+      "❌ Market data unavailable."
     );
     return;
   }
 
   const scan =
     scanToken(token);
+
+  setLastScan(
+    telegramId,
+    scan
+  );
 
   const confirmation =
     createConfirmation({
@@ -304,18 +456,23 @@ export async function startSellFlow(
     [
       "📉 CONFIRM SELL",
       "",
-      `$${token.symbol}`,
-      `Amount: ${amountPercent}% of position`,
-      `Price: ${money(token.priceUsd)}`,
-      `Risk: ${Math.round(scan.riskScore)}/100`,
+      `🪙 $${token.symbol}`,
       "",
-      "Expires in 30s.",
+      `Amount  ${amountPercent}%`,
+      `Price   ${money(token.priceUsd)}`,
+      `Risk    ${riskLabel(scan.riskScore)}`,
+      "",
+      "Confirmation expires in 30 seconds.",
     ].join("\n"),
     confirmationKeyboard(
       confirmation.id
     )
   );
 }
+
+// ============================================================
+// EXECUTE CONFIRMED TRADE
+// ============================================================
 
 export async function executeConfirmedTrade(
   ctx: Context,
@@ -330,7 +487,9 @@ export async function executeConfirmedTrade(
   }
 ): Promise<void> {
   const wallet =
-    getActiveWallet(telegramId);
+    getActiveWallet(
+      telegramId
+    );
 
   if (!wallet) {
     await ctx.reply(
@@ -341,6 +500,10 @@ export async function executeConfirmedTrade(
 
   const signer =
     getSigner(wallet);
+
+  // ----------------------------------------------------------
+  // BUY
+  // ----------------------------------------------------------
 
   if (
     confirmation.side === "BUY" &&
@@ -359,10 +522,12 @@ export async function executeConfirmedTrade(
         amountPercent: null,
       });
 
-    markConfirming(order.id);
+    markConfirming(
+      order.id
+    );
 
     await ctx.reply(
-      "⚡ Executing..."
+      "⚡ Executing buy..."
     );
 
     try {
@@ -378,10 +543,14 @@ export async function executeConfirmedTrade(
           confirmation.tokenAddress
         );
 
+      /*
+       * NOTE:
+       * This is still an approximation because
+       * actual received token amount should eventually
+       * come from the transaction receipt/logs.
+       */
       const approxTokens =
-        confirmation.amountEth *
-          token.priceUsd >
-        0
+        token.priceUsd > 0
           ? confirmation.amountEth /
             token.priceUsd
           : 0;
@@ -395,18 +564,31 @@ export async function executeConfirmedTrade(
       );
 
       await ctx.reply(
-        `✅ Buy complete for $${confirmation.tokenSymbol}.`
+        [
+          "✅ BUY COMPLETE",
+          "",
+          `$${confirmation.tokenSymbol}`,
+          `Amount: ${formatEth(confirmation.amountEth)}`,
+        ].join("\n")
       );
     } catch (err) {
       await ctx.reply(
-        `❌ Buy failed: ${String(
-          (err as Error).message ?? err
-        )}`
+        [
+          "❌ BUY FAILED",
+          "",
+          err instanceof Error
+            ? err.message
+            : String(err),
+        ].join("\n")
       );
     }
 
     return;
   }
+
+  // ----------------------------------------------------------
+  // SELL
+  // ----------------------------------------------------------
 
   if (
     confirmation.side === "SELL" &&
@@ -427,7 +609,22 @@ export async function executeConfirmedTrade(
 
     const sellAmountTokens =
       position.amountTokens *
-      (confirmation.amountPercent / 100);
+      (
+        confirmation.amountPercent /
+        100
+      );
+
+    if (
+      !Number.isFinite(
+        sellAmountTokens
+      ) ||
+      sellAmountTokens <= 0
+    ) {
+      await ctx.reply(
+        "❌ Invalid token amount."
+      );
+      return;
+    }
 
     const order =
       createOrder({
@@ -442,10 +639,12 @@ export async function executeConfirmedTrade(
           confirmation.amountPercent,
       });
 
-    markConfirming(order.id);
+    markConfirming(
+      order.id
+    );
 
     await ctx.reply(
-      "📉 Executing..."
+      "📉 Executing sell..."
     );
 
     try {
@@ -468,13 +667,22 @@ export async function executeConfirmedTrade(
       );
 
       await ctx.reply(
-        `✅ Sell complete for $${confirmation.tokenSymbol}.`
+        [
+          "✅ SELL COMPLETE",
+          "",
+          `$${confirmation.tokenSymbol}`,
+          `Sold: ${confirmation.amountPercent}%`,
+        ].join("\n")
       );
     } catch (err) {
       await ctx.reply(
-        `❌ Sell failed: ${String(
-          (err as Error).message ?? err
-        )}`
+        [
+          "❌ SELL FAILED",
+          "",
+          err instanceof Error
+            ? err.message
+            : String(err),
+        ].join("\n")
       );
     }
 
@@ -482,9 +690,13 @@ export async function executeConfirmedTrade(
   }
 
   await ctx.reply(
-    "Invalid confirmation."
+    "❌ Invalid confirmation."
   );
 }
+
+// ============================================================
+// BALANCE FORMAT
+// ============================================================
 
 export function formatBalanceLine(
   balanceWei: bigint
